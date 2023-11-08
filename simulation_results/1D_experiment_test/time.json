@@ -1,0 +1,33 @@
+{
+    "total_time_ns": 7985877042,
+    "total_allocated_bytes": 2023125018,
+    "time_ns": 0,
+    "n_calls": 0,
+    "allocated_bytes": 0,
+    "inner_timers": {
+        "Expmilstein_method1D": {
+            "total_time_ns": 0,
+            "total_allocated_bytes": 0,
+            "time_ns": 7175117792,
+            "n_calls": 1,
+            "allocated_bytes": 1333615954,
+            "inner_timers": {}
+        },
+        "Expleimkuhler_matthews1D": {
+            "total_time_ns": 0,
+            "total_allocated_bytes": 0,
+            "time_ns": 421550250,
+            "n_calls": 1,
+            "allocated_bytes": 345345684,
+            "inner_timers": {}
+        },
+        "Expeuler_maruyama1D": {
+            "total_time_ns": 0,
+            "total_allocated_bytes": 0,
+            "time_ns": 389209000,
+            "n_calls": 1,
+            "allocated_bytes": 344163380,
+            "inner_timers": {}
+        }
+    }
+}
