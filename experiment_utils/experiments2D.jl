@@ -257,6 +257,8 @@ function master_2D_experiment(integrators, num_repeats, V, D, T, R, sigma, steps
     @info "Running Experiments"
     for integrator in integrators
         @info "Running $(string(nameof(integrator))) experiment"
+        # reset the random seed for reproducibility
+        Random.seed!(1)
         @timeit to "Exp$(string(nameof(integrator)))" begin 
             _ = run_2D_experiment(integrator, num_repeats, V, D, T, R, sigma, stepsizes, probabilities, x_bins, y_bins, save_dir, chunk_size=chunk_size, checkpoint=checkpoint, q0=q0, time_transform=time_transform)
         end

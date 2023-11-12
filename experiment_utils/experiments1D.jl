@@ -202,9 +202,9 @@ function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsize
     @info "Running Experiments"
     for integrator in integrators
         @info "Running $(string(nameof(integrator))) experiment"
-        @timeit to "Exp$(string(nameof(integrator)))" begin
         # reset the random seed for reproducibility
         Random.seed!(1)
+        @timeit to "Exp$(string(nameof(integrator)))" begin
             _ = run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, x0=x0, noise_integrator=noise_integrator, n=n)
         end
     end

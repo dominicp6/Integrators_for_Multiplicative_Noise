@@ -6,7 +6,6 @@ function MT2_1D(x0, dt, D, Rₖ)
 
     χ = rand([-1, 1])
 
-    #ξ = sample([sqrt(3), -sqrt(3), 0], Weights([1/6, 1/6, 2/3]))
     J = dt * (Rₖ^2 - 1) / 2
     sqrt_dt_2 = sqrt(dt/2)
 
@@ -26,7 +25,6 @@ end
 function W2Ito1_1D(x0, dt, D, Rₖ)
 
     χ1 = rand([-1, 1])
-    #ξ = sample([sqrt(3), -sqrt(3), 0], Weights([1/6, 1/6, 2/3]))
     J = χ1 * (Rₖ^2  - 1) / 2
     sqrt_dt = sqrt(dt)
 
