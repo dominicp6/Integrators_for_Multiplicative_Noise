@@ -1,14 +1,14 @@
 module MiscUtils
-export init_q0, assert_isotropic_diagonal_diffusion, is_identity_diffusion, create_directory_if_not_exists
+export init_x0, assert_isotropic_diagonal_diffusion, is_identity_diffusion, create_directory_if_not_exists
 
-function init_q0(q0; dim::Int = 1) 
-    if q0 === nothing
-        q0 = randn(dim)
+function init_x0(x0; dim::Int = 1) 
+    if x0 === nothing
+        x0 = randn(dim)
     end
     if dim == 1
-        q0 = q0[1]
+        x0 = x0[1]
     end
-    return q0
+    return x0
 end
 
 """

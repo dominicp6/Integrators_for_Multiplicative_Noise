@@ -8,6 +8,11 @@ function bowl2D(q::AbstractVector{T}) where T<:Real
     0.5*(x^2+y^2)
 end
 
+function q4Potential(q::T) where T<:Real
+    # 1D quartic potential
+    return q^4 / 4
+end
+
 function doubleWell1D(q::T) where T<:Real
     # 1D double well potential
     h = 2
@@ -27,28 +32,28 @@ end
 
 function transformedSoftWell1D(q::T) where T<:Real
     # transformed soft well 1D to remove linear diffusion D(q) = 1 + |q| (global transform)
-    # tau = 1
+    # sigma = 1
     r = (q/4)*(abs(q)+4)
     return softWell1D(r) - log(1+ abs(q) + q^2 / 4)
 end
 
 function transformed2SoftWell1D(q::T) where T<:Real
     # transformed soft well 1D to remove linear diffusion D(q) = 1 + |q| (time rescaling)
-    tau = 1
-    return softWell1D(q) - tau*log(1+ abs(q))
+    sigma = 1
+    return softWell1D(q) - sigma*log(1+ abs(q))
 end
 
 function transformedLM2013(q::T) where T<:Real
     # transformed LM2013 to remove quadratic diffusion D(q) = 1 + q^2 (global transform)
     r = sinh(q)
-    tau = 1
-    return LM2013(r) - tau*log(1+r^2)
+    sigma = 1
+    return LM2013(r) - sigma*log(1+r^2)
 end
 
 function transformed2LM2013(q::T) where T<:Real
     # transformed LM2013 to remove quadratic diffusion D(q) = 1 + q^2 (time rescaling)
-    tau = 1
-    return LM2013(q) - tau*log(1+q^2)
+    sigma = 1
+    return LM2013(q) - sigma*log(1+q^2)
 end
 
 function localWell1D(q::T) where T<:Real

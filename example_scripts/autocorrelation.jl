@@ -21,7 +21,7 @@ master_dir = "/home/dominic/JuliaProjects/LangevinIntegrators/new_experiments/au
 
 
 T = 50000               # length of simulation
-tau = 1                 # noise coefficient
+sigma = 1                 # noise coefficient
 num_repeats = 200       # number of repeats
 
 # The integrators to use
@@ -43,5 +43,5 @@ x_of_y = y -> (y/4) * (abs(y) + 4)  # This spatial transformation is specific to
 save_dir = "$(master_dir)/$(exp_name)"
 
 @info "Running: $(exp_name)"
-#run_autocorrelation_experiment(integrator, num_repeats, potential, diffusion, T, tau, stepsize, max_lag, save_dir, space_transform=space_transform, time_transform=time_transform, x_of_y=x_of_y)
-run_autocorrelation_experiment(integrator, num_repeats, potential, diffusion, T, tau, stepsize, max_lag, save_dir, space_transform=space_transform, time_transform=time_transform, x_of_y=x_of_y)
+#run_autocorrelation_experiment(integrator, num_repeats, potential, diffusion, T, sigma, stepsize, max_lag, save_dir, space_transform=space_transform, time_transform=time_transform, x_of_y=x_of_y)
+run_autocorrelation_experiment(integrator, num_repeats, potential, diffusion, T, sigma, stepsize, max_lag, save_dir, space_transform=space_transform, time_transform=time_transform, x_of_y=x_of_y)

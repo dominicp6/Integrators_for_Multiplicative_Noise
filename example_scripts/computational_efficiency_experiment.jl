@@ -11,7 +11,7 @@ import .Experiments: master_1D_experiment, run_1D_experiment_until_given_error
 
 
 # Integrator Params
-tau = 1                 # value of kT (noise amplitude scaling)
+sigma = 1                 # value of kT (noise amplitude scaling)
 
 # Experiment Params
 num_repeats = 500
@@ -55,8 +55,8 @@ for (int_idx, integrator) in enumerate(integrators)
         @info "Running: $(exp_name)"
         save_dir = "outputs/$(exp_name)"
         stepsizes = stepsizes_list[int_idx][unt_idx]
-        probabilities = compute_1D_invariant_distribution(potential, tau, bin_boundaries)
-        run_1D_experiment_until_given_error(integrator, num_repeats, potential, diffusion, tau, stepsizes, probabilities, bin_boundaries, save_dir, target_uncertainty; chunk_size=500, checkpoint=checkpoint, q0=nothing, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y)
+        probabilities = compute_1D_invariant_distribution(potential, sigma, bin_boundaries)
+        run_1D_experiment_until_given_error(integrator, num_repeats, potential, diffusion, sigma, stepsizes, probabilities, bin_boundaries, save_dir, target_uncertainty; chunk_size=500, checkpoint=checkpoint, q0=nothing, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y)
     end
 end
 

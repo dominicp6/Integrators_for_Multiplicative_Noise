@@ -23,7 +23,7 @@ master_dir = "outputs" # Directory to save results in
 
 T =  4      # length of simulation     
 ΔT = 0.04   # interval between snapshots of finite-time distributions
-tau = 1     # noise coefficient
+sigma = 1     # noise coefficient
 
 num_repeats = 1000
 
@@ -56,4 +56,4 @@ bin_boundaries = range(xmin, xmax, length=n_bins+1)
 save_dir = "$(master_dir)/$(exp_name)"
 
 @info "Running: $(exp_name)"
-run_1D_finite_time_convergence_experiment(integrators, integrators_transformed, reference_integrator, reference_stepsize, num_repeats, potential, diffusion, ΔT, T, tau, stepsizes, bin_boundaries, save_dir; chunk_size=100000, mu0=0, sigma0=1, untransformed=untransformed, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y, y_of_x=y_of_x)
+run_1D_finite_time_convergence_experiment(integrators, integrators_transformed, reference_integrator, reference_stepsize, num_repeats, potential, diffusion, ΔT, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=100000, mu0=0, sigma0=1, untransformed=untransformed, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y, y_of_x=y_of_x)

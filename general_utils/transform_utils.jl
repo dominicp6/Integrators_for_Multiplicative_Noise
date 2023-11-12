@@ -1,9 +1,9 @@
 module TransformUtils
 using FHist, StatsBase
-export increment_g_counts, time_transformed_potential, increment_I_counts, increment_g_counts2D
+export increment_g_counts, time_transformed_potential, increment_I_counts, increment_g_counts2D, transform_potential_and_diffusion
 
-function time_transformed_potential(x, V, D, tau)
-    return V(x) - tau * log(D(x))
+function time_transformed_potential(x, V, D, sigma)
+    return V(x) - sigma * log(D(x))
 end
 
 function scale_range(range, transform)
@@ -76,6 +76,28 @@ function increment_I_counts(q_chunk, x_of_y, bin_boundaries, ΣI)
     end
 
     return ΣI
+end
+
+function transform_potential_and_diffusion(original_V, original_D, sigma, time_transform, space_transform, x_of_y)
+    @assert !(time_transform && space_transform) "Not supported to run both time and space transforms"
+    
+    if time_transform
+        V = x -> original_V(x) - sigma * log(original_D(x))
+        D = Dconst1D
+    end
+
+    if space_transform
+        @assert x_of_y !== nothing "x_of_y must be defined for space-transformed integrators"
+        V = y -> original_V(x_of_y(y)) - 0.5 * sigma * log(original_D(x_of_y(y)))
+        D = Dconst1D
+    end
+
+    if !(time_transform || space_transform)
+        V = original_V
+        D = original_D
+    end
+
+    return V, D
 end
 
 end # module

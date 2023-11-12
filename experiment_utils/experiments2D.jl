@@ -19,7 +19,7 @@ import .Integrators: euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_ide
 """
 Creates necessary directories and save experiment parameters for the 2D experiment.
 """
-function make_experiment2D_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, tau, x_bins, y_bins, chunk_size; T=nothing, target_uncertainty=nothing, time_transform=false)
+function make_experiment2D_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, sigma, x_bins, y_bins, chunk_size; T=nothing, target_uncertainty=nothing, time_transform=false)
     # Make master directory
     create_directory_if_not_exists(save_dir)
 
@@ -42,7 +42,7 @@ function make_experiment2D_folders(save_dir, integrator, stepsizes, checkpoint, 
                         "D" => string(nameof(D)), 
                         "T" => T, 
                         "target_uncertainty" => target_uncertainty,
-                        "tau" => tau, 
+                        "sigma" => sigma, 
                         "stepsizes" => stepsizes, 
                         "x_bins" => x_bins, 
                         "y_bins" => y_bins,
@@ -60,25 +60,25 @@ It performs the simulation for `steps_to_run` time steps and updates the histogr
 
 Note: The function is typically called within the context of the main simulation loop, and its results are used for further analysis.
 """
-function run_chunk2D(integrator, q0, Vprime, D, div_DDT, tau::Number, dt::Number, steps_to_run::Integer, hist, x_bins, y_bins, save_dir, repeat::Integer, chunk_number::Integer, time_transform::Bool, ΣgI, Σg, D_diag, R; identity_D=false)
+function run_chunk2D(integrator, q0, Vprime, D, div_DDT, sigma::Number, dt::Number, steps_to_run::Integer, hist, x_bins, y_bins, save_dir, repeat::Integer, chunk_number::Integer, time_transform::Bool, ΣgI, Σg, D_diag, R; identity_D=false)
     
     # Run a chunk of the simulation
     if identity_D
         # If the diffusion is identity, we can use a faster integrator
         if string(nameof(integrator)) == "euler_maruyama2D"
-            q_chunk, _ = euler_maruyama2D_identityD(q0, Vprime, D, div_DDT, tau, steps_to_run, dt)
+            q_chunk, _ = euler_maruyama2D_identityD(q0, Vprime, D, div_DDT, sigma, steps_to_run, dt)
             
         elseif string(nameof(integrator)) == "naive_leimkuhler_matthews2D"
-            q_chunk, _ = naive_leimkuhler_matthews2D_identityD(q0, Vprime, D, div_DDT, tau, steps_to_run, dt)
+            q_chunk, _ = naive_leimkuhler_matthews2D_identityD(q0, Vprime, D, div_DDT, sigma, steps_to_run, dt)
 
         elseif string(nameof(integrator)) == "stochastic_heun2D"
-            q_chunk, _ = stochastic_heun2D_identityD(q0, Vprime, D, div_DDT, tau, steps_to_run, dt)
+            q_chunk, _ = stochastic_heun2D_identityD(q0, Vprime, D, div_DDT, sigma, steps_to_run, dt)
         else
             # Integrator not recognised
             error("Integrator $(string(nameof(integrator))) does not have a fast version for identity diffusion")
         end
     else
-        q_chunk, _ = integrator(q0, Vprime, D, div_DDT, tau, steps_to_run, dt)
+        q_chunk, _ = integrator(q0, Vprime, D, div_DDT, sigma, steps_to_run, dt)
     end
 
     # [For time-transformed integrators] Increment g counts
@@ -106,7 +106,7 @@ Run a 2D finite-time experiment using the specified integrator and parameters.
 - `D`: The diffusion coefficient function that defines the noise in the system.
 - `R`: The constant-coefficient matrix that is needed for the time-transformation (see paper for details).
 - `T`: Total simulation time.
-- `tau`: The noise strength parameter.
+- `sigma`: The noise strength parameter.
 - `stepsizes`: An array of step sizes to be used in the simulation.
 - `probabilities`: The target probabilities to compute the convergence error.
 - `x_bins`: Bin boundaries for the x-axis.
@@ -126,13 +126,13 @@ The experiment is repeated `num_repeats` times, each time with different initial
 
 Note: The `V` and `D` functions may be modified internally to implement time or space transformations, based on the provided `time_transform` and `space_transform` arguments.
 """
-function run_2D_experiment(integrator, num_repeats, V, D, T, R, tau, stepsizes, probabilities, x_bins, y_bins, save_dir; chunk_size=10000000, checkpoint=false, q0=nothing, time_transform=false)
+function run_2D_experiment(integrator, num_repeats, V, D, T, R, sigma, stepsizes, probabilities, x_bins, y_bins, save_dir; chunk_size=10000000, checkpoint=false, q0=nothing, time_transform=false)
     
-    make_experiment2D_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, tau, x_bins, y_bins, chunk_size, T=T, target_uncertainty=nothing, time_transform=time_transform)
+    make_experiment2D_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, sigma, x_bins, y_bins, chunk_size, T=T, target_uncertainty=nothing, time_transform=time_transform)
    
     # [For time-transformed integrators] Modify the potential and diffusion functions appropriately (see paper for details)
     D_diag = nothing
-    V, D, D_diag = transform_potential_and_diffusion(V, D, D_diag, R, tau, time_transform)
+    V, D, D_diag = transform_potential_and_diffusion(V, D, D_diag, R, sigma, time_transform)
 
     # Verify whether the diffusion is identity
     identity_diffusion = is_identity_diffusion(D)
@@ -174,7 +174,7 @@ function run_2D_experiment(integrator, num_repeats, V, D, T, R, tau, stepsizes, 
             while steps_remaining > 0
                 # Run steps in chunks to minimise memory footprint
                 steps_to_run = convert(Int, min(steps_remaining, chunk_size))
-                q0, hist, chunk_number, ΣgI, Σg = run_chunk2D(integrator, q0, Vprime, D, div_DDT, tau, dt, steps_to_run, hist, x_bins, y_bins, save_dir, repeat, chunk_number, time_transform, ΣgI, Σg, D_diag, R, identity_D=identity_diffusion)
+                q0, hist, chunk_number, ΣgI, Σg = run_chunk2D(integrator, q0, Vprime, D, div_DDT, sigma, dt, steps_to_run, hist, x_bins, y_bins, save_dir, repeat, chunk_number, time_transform, ΣgI, Σg, D_diag, R, identity_D=identity_diffusion)
                 steps_remaining -= steps_to_run
             end
 
@@ -207,12 +207,12 @@ function run_2D_experiment(integrator, num_repeats, V, D, T, R, tau, stepsizes, 
 end
 
 
-function transform_potential_and_diffusion(original_V, original_D, D_diag, R, tau, time_transform)
+function transform_potential_and_diffusion(original_V, original_D, D_diag, R, sigma, time_transform)
     if time_transform 
         assert_isotropic_diagonal_diffusion(original_D)
         D_diag = (x,y) -> original_D(x,y)[1,1]
         # Transform the potential so that the diffusion is constant
-        V = (x,y) -> original_V(R[1,1]*x + R[1,2]*y, R[2,1]*x + R[2,2]*y) - 2 * tau * log(D_diag(R[1,1]*x + R[1,2]*y, R[2,1]*x + R[2,2]*y))
+        V = (x,y) -> original_V(R[1,1]*x + R[1,2]*y, R[2,1]*x + R[2,2]*y) - 2 * sigma * log(D_diag(R[1,1]*x + R[1,2]*y, R[2,1]*x + R[2,2]*y))
         D = Dconst2D
     else
         V = original_V
@@ -232,7 +232,7 @@ Parameters:
 - `D`: Diffusion function D(x) representing the diffusion coefficient.
 - `R`: The constant-coefficient matrix that is needed for the time-transformation (see paper for details).
 - `T`: Total time for the simulation.
-- `tau`: The noise strength parameter.
+- `sigma`: The noise strength parameter.
 - `stepsizes`: An array of time step sizes to be used in the simulation.
 - `xmin`: The minimum x-coordinate of the domain.
 - `ymin`: The minimum y-coordinate of the domain.
@@ -248,17 +248,17 @@ Parameters:
 Returns:
 - The function saves the results of each experiment in the specified `save_dir` and also saves the time convergence data in a file named "time.json".
 """
-function master_2D_experiment(integrators, num_repeats, V, D, T, R, tau, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=10000000, checkpoint=false, q0=nothing, time_transform=false)
+function master_2D_experiment(integrators, num_repeats, V, D, T, R, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=10000000, checkpoint=false, q0=nothing, time_transform=false)
     to = TimerOutput()
 
     @info "Computing Expected Probabilities"
-    probabilities, x_bins, y_bins, n_bins = compute_2D_invariant_distribution(V, tau, xmin, ymin, xmax, ymax, n_bins)
+    probabilities, x_bins, y_bins, n_bins = compute_2D_invariant_distribution(V, sigma, xmin, ymin, xmax, ymax, n_bins)
     
     @info "Running Experiments"
     for integrator in integrators
         @info "Running $(string(nameof(integrator))) experiment"
         @timeit to "Exp$(string(nameof(integrator)))" begin 
-            _ = run_2D_experiment(integrator, num_repeats, V, D, T, R, tau, stepsizes, probabilities, x_bins, y_bins, save_dir, chunk_size=chunk_size, checkpoint=checkpoint, q0=q0, time_transform=time_transform)
+            _ = run_2D_experiment(integrator, num_repeats, V, D, T, R, sigma, stepsizes, probabilities, x_bins, y_bins, save_dir, chunk_size=chunk_size, checkpoint=checkpoint, q0=q0, time_transform=time_transform)
         end
     end
 

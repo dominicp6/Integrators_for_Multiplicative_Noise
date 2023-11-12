@@ -21,7 +21,7 @@ Time rescalings are supported.
 exp_name = "2D_test"
 master_dir = "outputs" # Directory to save results in
 T = 10000              # length of simulation
-tau = 1                # value of kT (noise amplitude scaling)
+sigma = 1                # value of kT (noise amplitude scaling)
 num_repeats = 10
 
 # The step sizes to use (to use a single step size, set stepsizes = [stepsize])
@@ -55,4 +55,4 @@ save_dir = "$(master_dir)/$(exp_name)"
 
 # Run the experiments
 @info "Running: $(exp_name)"
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, R, tau, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir, chunk_size=1000000, checkpoint=checkpoint, q0=nothing, time_transform=time_transform)
+master_2D_experiment(integrators, num_repeats, potential, diffusion, T, R, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir, chunk_size=1000000, checkpoint=checkpoint, q0=nothing, time_transform=time_transform)

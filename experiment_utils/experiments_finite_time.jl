@@ -96,13 +96,13 @@ Create necessary directories and save experiment parameters for the finite-time 
     - `num_repeats`: The number of times to repeat the simulation.
     - `V`: The potential function used in the simulation.
     - `D`: The diffusion coefficient function used in the simulation.
-    - `tau`: The noise strength parameter.
+    - `sigma`: The noise strength parameter.
     - `x_bins`: The bin boundaries for the histograms.
     - `chunk_size`: The number of repeats to run in each computational chunk.
     - `ΔT`: The time interval for saving the distribution in the simulation.
     - `T`: The total simulation time.
 """
-function create_experiment_folders(save_dir, integrators, reference_intgrator, reference_stepsize, untransformed::Bool, time_transform::Bool, space_transform::Bool,  stepsizes, num_repeats, V, D, tau, x_bins, chunk_size, ΔT, T)
+function create_experiment_folders(save_dir, integrators, reference_intgrator, reference_stepsize, untransformed::Bool, time_transform::Bool, space_transform::Bool,  stepsizes, num_repeats, V, D, sigma, x_bins, chunk_size, ΔT, T)
     # Create master directory
     create_directory_if_not_exists(save_dir)
     
@@ -148,7 +148,7 @@ function create_experiment_folders(save_dir, integrators, reference_intgrator, r
                                 "num_repeats" => num_repeats,
                                 "V" => string(nameof(V)),
                                 "D" => string(nameof(D)),
-                                "tau" => tau,
+                                "sigma" => sigma,
                                 "x_bins" => x_bins,
                                 "chunk_size" => chunk_size,
                                 "ΔT" => ΔT,
@@ -159,7 +159,7 @@ function create_experiment_folders(save_dir, integrators, reference_intgrator, r
     end
 end
 
-function run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V, D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing, reference_simulation=false)
+function run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V, D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing, reference_simulation=false)
     
     # Set the mean and the variance of the ρ₀ distribution (distribution of starting configurations) if not specified 
     if (mu0 === nothing)
@@ -205,7 +205,7 @@ function run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V,
                 steps_to_run = floor(Int, ΔT / stepsize)     
 
                 # Run the chunk of steps
-                q_chunk, Rₖ = integrator(q0, Vprime, D, Dprime, tau, steps_to_run, stepsize, previous_Rₖ)
+                q_chunk, Rₖ = integrator(q0, Vprime, D, Dprime, sigma, steps_to_run, stepsize, previous_Rₖ)
 
                 # Save the final position
                 q0 = copy(q_chunk[end])
@@ -239,7 +239,7 @@ function run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V,
     return histograms
 end
 
-function run_1D_finite_time_experiment_time_transform(integrator, num_repeats, original_V, original_D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing)
+function run_1D_finite_time_experiment_time_transform(integrator, num_repeats, original_V, original_D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing)
         
     # Set the mean and the variance of the ρ₀ distribution (distribution of starting configurations) if not specified 
     if (mu0 === nothing)
@@ -251,7 +251,7 @@ function run_1D_finite_time_experiment_time_transform(integrator, num_repeats, o
     end
 
     # Define the transformed potential and diffusion coefficients
-    V = x -> original_V(x) - tau * log(original_D(x))
+    V = x -> original_V(x) - sigma * log(original_D(x))
     D = Dconst1D
 
     # Compute the symbolic derivatives of the potential and diffusion coefficients
@@ -298,7 +298,7 @@ function run_1D_finite_time_experiment_time_transform(integrator, num_repeats, o
                 g = 1/original_D(q0)
 
                 # Run one step of the integrator 
-                q1, Rₖ = integrator(q0, Vprime, D, Dprime, tau, 1, stepsize, previous_Rₖ)
+                q1, Rₖ = integrator(q0, Vprime, D, Dprime, sigma, 1, stepsize, previous_Rₖ)
                 
                 # Estimate the elapsed time during this step (in the original time scale)
                 delta_t = g * stepsize
@@ -347,7 +347,7 @@ function run_1D_finite_time_experiment_time_transform(integrator, num_repeats, o
     return histograms
 end
 
-function run_1D_finite_time_experiment_space_transform(integrator, num_repeats, original_V, original_D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing, x_of_y=nothing, y_of_x=nothing)
+function run_1D_finite_time_experiment_space_transform(integrator, num_repeats, original_V, original_D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing, x_of_y=nothing, y_of_x=nothing)
 
     # Set the mean and the variance of the ρ₀ distribution (distribution of starting configurations) if not specified 
     if (mu0 === nothing)
@@ -360,7 +360,7 @@ function run_1D_finite_time_experiment_space_transform(integrator, num_repeats, 
 
     # Transform the potential so that the diffusion is constant
     @assert x_of_y !== nothing "x_of_y must be defined for space-transformed integrators"
-    V = y -> original_V(x_of_y(y)) - 0.5 * tau * log(original_D(x_of_y(y)))
+    V = y -> original_V(x_of_y(y)) - 0.5 * sigma * log(original_D(x_of_y(y)))
     D = Dconst1D
 
     # Compute the symbolic derivatives of the potential and diffusion coefficients
@@ -401,7 +401,7 @@ function run_1D_finite_time_experiment_space_transform(integrator, num_repeats, 
                 steps_to_run = floor(Int, ΔT / stepsize)     
 
                 # Run the chunk of steps
-                q_chunk, Rₖ = integrator(q0, Vprime, D, Dprime, tau, steps_to_run, stepsize, previous_Rₖ)
+                q_chunk, Rₖ = integrator(q0, Vprime, D, Dprime, sigma, steps_to_run, stepsize, previous_Rₖ)
 
                 # Save the final position
                 q0 = copy(q_chunk[end])
@@ -444,7 +444,7 @@ Run a 1D finite-time convergence experiment for different integrators and stepsi
 - `D`: The diffusion coefficient function used in the simulation.
 - `ΔT`: The time interval for saving the distribution in the simulation.
 - `T`: The total simulation time.
-- `tau`: The noise strength parameter for the simulation.
+- `sigma`: The noise strength parameter for the simulation.
 - `stepsizes`: An array of stepsizes to be used in the simulation.
 - `bin_boundaries`: An array specifying the bin boundaries for histograms.
 - `save_dir`: The path to the directory where experiment data and results will be saved.
@@ -463,19 +463,19 @@ The function accepts various optional parameters to control the experiment, such
 
 The experiment results are saved as JLD2 files, and plots are generated and saved based on the transformation options.
 """
-function run_1D_finite_time_convergence_experiment(integrators, integrators_transformed, reference_integrator, reference_stepsize, num_repeats, V, D, ΔT, T, tau, stepsizes, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing, untransformed=true, time_transform=false, space_transform=false, x_of_y=nothing, y_of_x=nothing)
+function run_1D_finite_time_convergence_experiment(integrators, integrators_transformed, reference_integrator, reference_stepsize, num_repeats, V, D, ΔT, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=1000, mu0=nothing, sigma0=nothing, untransformed=true, time_transform=false, space_transform=false, x_of_y=nothing, y_of_x=nothing)
 
     @assert untransformed || time_transform || space_transform "At least one of untransformed, time_transform or space_transform must be set to true"
 
     # Create the experiment folders, if they don't already exist
-    create_experiment_folders(save_dir, integrators, reference_integrator, reference_stepsize, untransformed, time_transform, space_transform, stepsizes, num_repeats, V, D, tau, bin_boundaries, chunk_size, ΔT, T)
+    create_experiment_folders(save_dir, integrators, reference_integrator, reference_stepsize, untransformed, time_transform, space_transform, stepsizes, num_repeats, V, D, sigma, bin_boundaries, chunk_size, ΔT, T)
     
     number_of_snapshots = Int(floor(T / ΔT))
     time_snapshots = ΔT:ΔT:T
 
     # Run a high accuracy simulation with a small stepsize 
     @info "Running reference simulation, $(string(nameof(reference_integrator))) with stepsize $(reference_stepsize) for $(T) seconds"
-    reference_histograms = run_1D_finite_time_experiment_untransformed(reference_integrator, num_repeats, V, D, ΔT, T, tau, reference_stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0, reference_simulation=true)
+    reference_histograms = run_1D_finite_time_experiment_untransformed(reference_integrator, num_repeats, V, D, ΔT, T, sigma, reference_stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0, reference_simulation=true)
 
     # Initialise error arrays
     if untransformed
@@ -499,7 +499,7 @@ function run_1D_finite_time_convergence_experiment(integrators, integrators_tran
 
             if untransformed
                 @info "Running untransformed $(string(nameof(integrator))), stepsize = $stepsize"
-                histograms = run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V, D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0)
+                histograms = run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V, D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0)
             
                 # Compute the finite time error w.r.t the reference simulation for the different time snapshots 
                 untransformed_finite_time_errors = compute_histogram_errors(histograms, reference_histograms)
@@ -514,7 +514,7 @@ function run_1D_finite_time_convergence_experiment(integrators, integrators_tran
 
             if time_transform
                 @info "Running time transformed $(string(nameof(integrator))), stepsize = $stepsize"
-                histograms_TT = run_1D_finite_time_experiment_time_transform(integrator, num_repeats, V, D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0)
+                histograms_TT = run_1D_finite_time_experiment_time_transform(integrator, num_repeats, V, D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0)
                 
                 time_transformed_finite_time_errors = compute_histogram_errors(histograms_TT, reference_histograms)
                 error_time_transformed[integrator_idx, stepsize_idx, :] = time_transformed_finite_time_errors
@@ -522,7 +522,7 @@ function run_1D_finite_time_convergence_experiment(integrators, integrators_tran
 
             if space_transform
                 @info "Running space transformed $(string(nameof(integrator))), stepsize = $stepsize"
-                histograms_ST = run_1D_finite_time_experiment_space_transform(integrator, num_repeats, V, D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0, x_of_y=x_of_y, y_of_x=y_of_x)
+                histograms_ST = run_1D_finite_time_experiment_space_transform(integrator, num_repeats, V, D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0, x_of_y=x_of_y, y_of_x=y_of_x)
                 
                 space_transformed_finite_time_errors = compute_histogram_errors(histograms_ST, reference_histograms)
                 error_space_transformed[integrator_idx, stepsize_idx, :] = space_transformed_finite_time_errors
@@ -557,17 +557,17 @@ function run_1D_finite_time_convergence_experiment(integrators, integrators_tran
 end
 
 
-function finite_time_convergence_to_invariant_measure(integrator, stepsize, num_repeats, V, D, ΔT, T, tau, bin_boundaries, save_dir; chunk_size=1000, mu0=0.0, sigma0=1.0)
+function finite_time_convergence_to_invariant_measure(integrator, stepsize, num_repeats, V, D, ΔT, T, sigma, bin_boundaries, save_dir; chunk_size=1000, mu0=0.0, sigma0=1.0)
 
     # Create the directory to save the results
     create_directory_if_not_exists(save_dir)
     create_directory_if_not_exists("$(save_dir)/figures")
 
     @info "Computing the Invariant Distribution"
-    exact_invariant_distribution = compute_1D_invariant_distribution(V, tau, bin_boundaries)
+    exact_invariant_distribution = compute_1D_invariant_distribution(V, sigma, bin_boundaries)
 
     @info "Running finite time convergence experiment for $(string(nameof(integrator))) with stepsize $(stepsize) for $(T) seconds"
-    histograms = run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V, D, ΔT, T, tau, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0)
+    histograms = run_1D_finite_time_experiment_untransformed(integrator, num_repeats, V, D, ΔT, T, sigma, stepsize, bin_boundaries, save_dir; chunk_size=chunk_size, mu0=mu0, sigma0=sigma0)
 
     @info "Computing finite time errors"
     finite_time_errors = compute_histogram_errors_single_reference(histograms, exact_invariant_distribution, num_repeats)

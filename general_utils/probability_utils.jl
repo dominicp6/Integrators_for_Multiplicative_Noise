@@ -1,11 +1,11 @@
 module ProbabilityUtils
 using HCubature, QuadGK, FHist, HDF5, Statistics, StatsBase, Plots
-export compute_1D_invariant_distribution, compute_2D_invariant_distribution, compute_1D_mean_L1_error, compute_2D_mean_L1_error
+export compute_1D_invariant_distribution, compute_2D_invariant_distribution, compute_1D_mean_L1_error, compute_2D_mean_L1_error, compute_convergence_error
 
 """
 Compute the expected counts in a 2D histogram of the configuration space
 """
-function compute_2D_invariant_distribution(V, tau, xmin, ymin, xmax, ymax, n_bins)
+function compute_2D_invariant_distribution(V, sigma, xmin, ymin, xmax, ymax, n_bins)
 
     # Histogram parameters
     x_bins = range(xmin, xmax, length=n_bins+1)
@@ -16,7 +16,7 @@ function compute_2D_invariant_distribution(V, tau, xmin, ymin, xmax, ymax, n_bin
         return V(x, y)
     end
 
-    f(q) = exp(-V1arg(q) / tau) 
+    f(q) = exp(-V1arg(q) / sigma) 
     prob = zeros(n_bins, n_bins)
     # Compute the integral of f over the entire configuration space (approximated by integral over a large square)
     integral_of_f, err = hcubature(f, [-5, -5], [5, 5])
@@ -37,11 +37,11 @@ end
 """
 Compute the expected counts in a 1D histogram of the configuration space
 """
-function compute_1D_invariant_distribution(V, tau, bins; configuration_space=(-12,12))
+function compute_1D_invariant_distribution(V, sigma, bins; configuration_space=(-12,12))
 
     n_bins = length(bins) - 1
 
-    f(q) = exp(-V(q) / tau) 
+    f(q) = exp(- 2* V(q) / sigma^2) 
     prob = zeros(length(bins) - 1)
     # Compute the integral of f over the entire configuration space (approximated by integral over a large square)
     integral_of_f, err = quadgk(f, configuration_space[1], configuration_space[2])
@@ -131,6 +131,22 @@ function compute_2D_mean_L1_error(empirical_probabilities::Matrix{Float64}, theo
     mean_error = sum(abs.(empirical_probabilities .- theoretical_probabilities)) / (n_bins_x * n_bins_y)
 
     return mean_error
+end
+
+"""
+TODO: Add docstring
+
+"""
+function compute_convergence_error(hist, probabilities, total_samples, time_transform, space_transform, ΣgI, Σg, ΣI)
+    if time_transform
+        empirical_probabilities = ΣgI ./ Σg
+        return compute_1D_mean_L1_error(empirical_probabilities, probabilities)
+    elseif space_transform
+        empirical_probabilities = ΣI ./ total_samples
+        return compute_1D_mean_L1_error(empirical_probabilities, probabilities)
+    else
+        return compute_1D_mean_L1_error(hist, probabilities, total_samples)
+    end
 end
 
 end # module ProbabilityUtils
