@@ -1,6 +1,6 @@
 module DiffusionTensors
 using LinearAlgebra
-export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D
+export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D
 
 # This script defines preset diffusion tensors to test the code
 
@@ -20,9 +20,12 @@ function Dcosperturb1D(q::T) where T<:Real
     return 1.5 + 0.5 * cos(q)
 end
 
-
 function Dconst2D(x::T, y::T) where T<:Real
     return Matrix{Float64}(I, 2, 2)
+end
+
+function Dcosperturb2D(x::T, y::T) where T<:Real
+    return (1.5 + 0.25 * (cos(x) + cos(y))) * Matrix{Float64}(I, 2, 2)
 end
 
 function Dabs2D(x::T, y::T) where T<:Real
