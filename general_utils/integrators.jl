@@ -2,7 +2,7 @@ module Integrators
 include("calculus.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D
-export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, naive_leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D
+export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, naive_leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, eugen
 
 function euler_maruyama1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
@@ -10,6 +10,7 @@ function euler_maruyama1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
     t = 0.0
     q = copy(q0)
     q_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -21,7 +22,7 @@ function euler_maruyama1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
         diffusion = sigma * Dq * randn()
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt)
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[i] = q
         
         # update the time
@@ -40,6 +41,7 @@ function leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer
     if Rₖ === nothing
         Rₖ = randn()
     end
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -51,7 +53,7 @@ function leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer
         Rₖ₊₁ = randn()
         diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt) 
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[i] = q
         
         # update the time
@@ -73,12 +75,13 @@ function leimkuhler_matthews_markovian1D(x0, Vprime, D, D2prime, sigma::Number, 
     t = 0.0
     x = copy(x0)
     x_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
 
     for i in 1:m
         D_x = D(x)
         Rₖ = randn()
-        x_bar = x + 0.5 * sqrt(dt) * sigma * D_x * Rₖ
-        x += dt * D²(x) * (-Vprime(x_bar)) + sqrt(dt) * sigma * D_x * Rₖ
+        x_bar = x + 0.5 * sqrt_dt * sigma * D_x * Rₖ
+        x += dt * D²(x) * (-Vprime(x_bar)) + sqrt_dt * sigma * D_x * Rₖ
 
         x_traj[i] = x_bar
 
@@ -98,16 +101,48 @@ function eugen_gilles1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::N
     t = 0.0
     x = copy(x0)
     x_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
         Rₖ = randn()
         # choosing x_tilde = x
-        x_bar = x + 0.5 * sqrt(dt) * sigma * D(x) * Rₖ
+        x_bar = x + 0.5 * sqrt_dt * sigma * D(x) * Rₖ
         F_x_bar = F(x_bar)
         x += dt * F_x_bar + noise_integrator(x + dt * F_x_bar / 4, dt, D, Rₖ)
 
         x_traj[i] = x_bar
+
+        # update the time
+        t += dt
+    end
+
+    return x_traj, nothing
+end
+
+function eugen_gilles2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+    D² = (x, y) -> D(x, y)^2
+    F = (x, y) -> D²(x, y) * (-Vprime(x, y)) + sigma^2 * div_DDT(x, y) /2
+
+    # Define first and second columns of the matrix function D
+    D_1 = (x, y) -> D(x, y)[:,1]
+    D_2 = (x, y) -> D(x, y)[:,2]
+
+    # set up
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(2, m)
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        Rₖ = randn(2)
+        # choosing x_tilde = x
+        x_bar = x + 0.5 * sqrt_dt * sigma * D(x...) * Rₖ
+        F_x_bar = F(x_bar...)
+        x += dt * F_x_bar + noise_integrator(x + dt * F_x_bar / 4, dt, D, D_1, D_2, Rₖ)
+
+        x_traj[:, i] .= x_bar
 
         # update the time
         t += dt
@@ -130,16 +165,16 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
     end
 
     sqrt_2_dt = sqrt(2 * dt)
+    sqrt_2 = sqrt(2)
+    sqrt_dt_2 = sqrt(dt / 2)
+    inner_step = sqrt_dt_2 / n  
 
     # simulate
     for i in 1:m
         D_x = D(x)
         grad_V = Vprime(x)
         grad_D = Dprime(x)
-        hat_pₖ₊₁ = sigma * Rₖ / sqrt(2) - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_2_dt * grad_D / 2
-        
-        sqrt_h_2 = sqrt(dt / 2)
-        inner_step = sqrt_h_2 / n  # Divide by n for each internal RK4 step
+        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_2_dt * grad_D / 2
         
         # Perform n steps of RK4 integration for hat_xₖ₊₁
         hat_xₖ₊₁ = x # Initialize hat_xₖ₊₁
@@ -191,6 +226,7 @@ function hummer_leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::
     if Rₖ === nothing
         Rₖ = randn()
     end
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -203,7 +239,7 @@ function hummer_leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::
         diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt) 
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[i] = q
         
         # update the time
@@ -223,6 +259,7 @@ function milstein_method1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
     t = 0.0
     q = copy(q0)
     q_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -236,7 +273,7 @@ function milstein_method1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
         second_order_correction = (sigma^2 / 4) * div_D2 * (Rₖ^2 - 1) 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt) + second_order_correction * dt
+        q += drift * dt + diffusion * sqrt_dt + second_order_correction * dt
         q_traj[i] = q
         
         # update the time
@@ -254,6 +291,7 @@ function stochastic_heun1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
     t = 0.0
     q = copy(q0)
     q_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
     
     # simulate
     for i in 1:m
@@ -266,7 +304,7 @@ function stochastic_heun1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
         
         # Compute the predicted next state using Euler-Maruyama
         Rₖ = randn()
-        q_pred = q + drift * dt + diffusion * Rₖ * sqrt(dt)
+        q_pred = q + drift * dt + diffusion * Rₖ * sqrt_dt
         
         # Compute drift and diffusion coefficients at the predicted position
         Dq_pred = D(q_pred)
@@ -276,7 +314,7 @@ function stochastic_heun1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
         diffusion_pred = sqrt(2 * sigma * Dq_pred)
         
         # Compute the corrected next state using a weighted average
-        q += 0.5 * (drift + drift_pred) * dt + 0.5 * (diffusion + diffusion_pred) * Rₖ * sqrt(dt)
+        q += 0.5 * (drift + drift_pred) * dt + 0.5 * (diffusion + diffusion_pred) * Rₖ * sqrt_dt
         q_traj[i] = q
         
         # Update the time
@@ -287,13 +325,14 @@ function stochastic_heun1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
 end
 
 
-function euler_maruyama2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+function euler_maruyama2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0
     q = copy(q0)
     n = length(q0)
     q_traj = zeros(n, m)
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -302,11 +341,11 @@ function euler_maruyama2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt:
         Dq = D(q[1], q[2])
         DDTq = Dq * Dq'
         div_DDTq = div_DDT(q[1], q[2])
-        drift = -DDTq * grad_V + sigma * div_DDTq 
-        diffusion = sqrt(2 * sigma) * Dq * randn(n)
+        drift = -DDTq * grad_V + (sigma^2) * div_DDTq / 2 
+        diffusion = sigma * Dq * randn(n)
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt)
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[:,i] .= q
         
         # update the time
@@ -320,12 +359,14 @@ end
 Optimised version of euler_maruyama2D for the case where D is the identity matrix
 """
 function euler_maruyama2D_identityD(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+    # TODO: update this implementation to reflect notation change
     
     # set up
     t = 0.0
     q = copy(q0)
     n = length(q0)
     q_traj = zeros(n, m)
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -335,7 +376,7 @@ function euler_maruyama2D_identityD(q0, Vprime, D, div_DDT, sigma::Number, m::In
         diffusion = sqrt(2 * sigma) * randn(n)
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt)
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[:,i] .= q
         
         # update the time
@@ -349,6 +390,7 @@ end
 Optimised version of naive_leimkuhler_matthews2D for the case where D is the identity matrix
 """
 function naive_leimkuhler_matthews2D_identityD(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+    # TODO: update this implementation to reflect notation change
     
     # set up
     t = 0.0
@@ -358,6 +400,7 @@ function naive_leimkuhler_matthews2D_identityD(q0, Vprime, D, div_DDT, sigma::Nu
     if Rₖ === nothing
         Rₖ = randn(n)
     end
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -368,7 +411,7 @@ function naive_leimkuhler_matthews2D_identityD(q0, Vprime, D, div_DDT, sigma::Nu
         diffusion = sqrt(2 * sigma) * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt) 
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[:,i] .= q
         
         # update the time
@@ -391,6 +434,7 @@ function naive_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::I
     if Rₖ === nothing
         Rₖ = randn(n)
     end
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -399,12 +443,12 @@ function naive_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::I
         Dq = D(q[1], q[2])
         DDTq = Dq * Dq'
         div_DDTq = div_DDT(q[1], q[2])
-        drift = -DDTq * grad_V + sigma * div_DDTq 
+        drift = -DDTq * grad_V + (sigma^2)/2 * div_DDTq 
         Rₖ₊₁ = randn(n)
-        diffusion = sqrt(2 * sigma) * Dq * (Rₖ + Rₖ₊₁)/2 
+        diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt) 
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[:,i] .= q
         
         # update the time
@@ -427,6 +471,7 @@ function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::
     if Rₖ === nothing
         Rₖ = randn(n)
     end
+    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
@@ -435,12 +480,12 @@ function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::
         Dq = D(q[1], q[2])
         DDTq = Dq * Dq'
         div_DDTq = div_DDT(q[1], q[2])
-        drift = -DDTq * grad_V + (3/4) * sigma * div_DDTq 
+        drift = -DDTq * grad_V + (3/8) * (sigma^2) * div_DDTq 
         Rₖ₊₁ = randn(n)
-        diffusion = sqrt(2 * sigma) * Dq * (Rₖ + Rₖ₊₁)/2 
+        diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt(dt) 
+        q += drift * dt + diffusion * sqrt_dt
         q_traj[:,i] .= q
         
         # update the time
@@ -454,13 +499,15 @@ function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::
 end
 
 function stochastic_heun2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+    # TODO: update this implementation to reflect notation change
     
     # set up
     t = 0.0
     q = copy(q0)
     n = length(q0)
     q_traj = zeros(n, m)
-    
+    sqrt_dt = sqrt(dt)
+
     # simulate
     for i in 1:m
         # Compute drift and diffusion coefficients at the current position
@@ -473,7 +520,7 @@ function stochastic_heun2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt
         
         # Compute the predicted next state using Euler-Maruyama
         Rₖ = randn(n)
-        q_pred = q + drift * dt + diffusion * Rₖ * sqrt(dt)
+        q_pred = q + drift * dt + diffusion * Rₖ * sqrt_dt
         
         # Compute drift and diffusion coefficients at the predicted position
         grad_V_pred = Vprime(q_pred[1], q_pred[2])
@@ -484,7 +531,7 @@ function stochastic_heun2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt
         diffusion_pred = sqrt(2 * sigma) * Dq_pred
         
         # Compute the corrected next state using a weighted average
-        q += 0.5 * (drift + drift_pred) * dt + 0.5 * (diffusion + diffusion_pred) * Rₖ * sqrt(dt)
+        q += 0.5 * (drift + drift_pred) * dt + 0.5 * (diffusion + diffusion_pred) * Rₖ * sqrt_dt
         q_traj[:,i] .= q
         
         # Update the time
@@ -499,6 +546,7 @@ end
 Optimised version of stochastic_heun2D for the case where D is the identity matrix
 """
 function stochastic_heun2D_identityD(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+    # TODO: update this implementation to reflect notation change
     
     # set up
     t = 0.0
