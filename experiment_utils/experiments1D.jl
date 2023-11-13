@@ -122,24 +122,29 @@ Note:
 - If `time_transform` is true, the potential function V(x) is transformed to ensure constant diffusion.
 - If `space_transform` is true, the potential function V(x) is transformed based on the provided mapping x_of_y to ensure constant diffusion.
 """
-function run_1D_experiment_until_given_error(integrator, num_repeats, V, D, sigma, stepsizes, probabilities, bin_boundaries, save_dir, target_error; chunk_size=10000)
-    # TODO: need to update this function
+function run_1D_experiment_until_given_error(integrator, num_repeats, V, D, sigma, stepsizes, probabilities, bin_boundaries, save_dir, target_error; chunk_size=10000, noise_integrator=nothing, n=nothing)
     
     # Create the experiment folders
-    make_experiment_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, sigma, bin_boundaries, chunk_size, target_uncertainty=target_error)
+    make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, bin_boundaries, chunk_size, nothing, target_error)
 
-    # Compute the symbolic derivatives of the potential and diffusion functions
+    # Compute the symbolic derivative of the potential and diffusion functions
     Vprime = differentiate1D(V)
-    Dprime = differentiate1D(D)
+    D_squared = x -> D(x)^2
+    D2prime = differentiate1D(D_squared)
 
     # Initialise the data array
     steps_until_uncertainty_data = zeros(length(stepsizes), num_repeats)
 
+    times_per_sample = zeros(num_repeats)
     Threads.@threads for repeat in ProgressBar(1:num_repeats)
         # set the random seed for reproducibility
         Random.seed!(repeat) 
-        q0 = init_x0(q0)
+        x0 = init_x0(nothing)
 
+        total_samples = 0
+
+        # Start timing
+        t0 = time_ns()
         # Run the simulation for each specified step size
         for (stepsize_idx, dt) in enumerate(stepsizes)
 
@@ -150,9 +155,9 @@ function run_1D_experiment_until_given_error(integrator, num_repeats, V, D, sigm
 
             while error > target_error
                 # Run a chunk of the simulation
-                q_chunk, _ = integrator(q0, Vprime, D, Dprime, sigma, steps_to_run, dt)
-                q0 = copy(q_chunk[end])
-                hist += Hist1D(q_chunk, bin_boundaries)
+                x_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, chunk_size, dt, nothing, noise_integrator, n)
+                x0 = copy(x_chunk[end])
+                hist += Hist1D(x_chunk, bin_boundaries)
                 steps_ran += chunk_size
                 
                 error = compute_1D_mean_L1_error(hist, probabilities, steps_ran)
@@ -160,11 +165,30 @@ function run_1D_experiment_until_given_error(integrator, num_repeats, V, D, sigm
 
             # Populate the data array
             steps_until_uncertainty_data[stepsize_idx, repeat] = steps_ran
+            total_samples += steps_ran
         end
+
+        # Stop timing
+        t1 = time_ns()
+        time_per_sample = (t1 - t0) / total_samples
+        times_per_sample[repeat] = time_per_sample
     end
 
     # Save the data and plot the results
     save_and_plot(integrator, steps_until_uncertainty_data, stepsizes, save_dir, ylabel="Steps until uncertainty < $(target_error)", error_in_mean=true)
+
+    # Minimum samples to target error
+    samples_mean = mean(steps_until_uncertainty_data, dims=2)
+    samples_std = std(steps_until_uncertainty_data, dims=2)
+    minimum_samples_mean = min(samples_mean...)
+    minimum_samples_std = samples_std[argmin(samples_mean)]
+
+    min_compute_time = minimum_samples_mean * mean(times_per_sample)
+
+    # Write mean and standard deviation of cost per sample to file
+    open("$(save_dir)/results.json", "w") do io
+        JSON.print(io, Dict("mean_time_per_sample" => mean(times_per_sample), "std_time_per_sample" => std(times_per_sample), "target_error" => target_error, "minimum_samples_mean" =>  minimum_samples_mean, "minimum_samples_std" => minimum_samples_std, "number_repeats" => num_repeats, "min_compute_time" => min_compute_time), 4)
+    end
 
     return steps_until_uncertainty_data
 end
