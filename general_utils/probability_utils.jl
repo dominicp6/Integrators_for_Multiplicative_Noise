@@ -16,7 +16,7 @@ function compute_2D_invariant_distribution(V, sigma, xmin, ymin, xmax, ymax, n_b
         return V(x, y)
     end
 
-    f(q) = exp(-V1arg(q) / sigma) 
+    f(q) = exp(-2 * V1arg(q) / sigma^2) 
     prob = zeros(n_bins, n_bins)
     # Compute the integral of f over the entire configuration space (approximated by integral over a large square)
     integral_of_f, err = hcubature(f, [-5, -5], [5, 5])
