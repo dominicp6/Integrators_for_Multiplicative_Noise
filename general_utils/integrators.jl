@@ -461,7 +461,7 @@ function naive_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::I
     return q_traj, Rₖ
 end
 
-function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0
