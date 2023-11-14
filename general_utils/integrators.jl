@@ -9,21 +9,21 @@ function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
     # set up
     t = 0.0
     x = copy(x0)
-    q_traj = zeros(m)
+    x_traj = zeros(m)
     sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
         # compute the drift and diffusion coefficients
-        Dq = D(q)
-        grad_V = Vprime(q)
-        div_D2 = D2prime(q)
-        drift = -(Dq^2) * grad_V + sigma^2 * div_D2 / 2
-        diffusion = sigma * Dq * randn()
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+        diffusion = sigma * D_x * randn()
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt_dt
-        q_traj[i] = q
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[i] = x
         
         # update the time
         t += dt
@@ -33,6 +33,7 @@ function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
 end
 
 function leimkuhler_matthews1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+    # Caution: does not converge for diffusion other than D(x) = 1.
     
     # set up
     t = 0.0
@@ -46,15 +47,15 @@ function leimkuhler_matthews1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer
     # simulate
     for i in 1:m
         # compute the drift and diffusion coefficients
-        Dq = D(q)
-        grad_V = Vprime(q)
-        div_D2 = D2prime(q)
-        drift = -(Dq^2) * grad_V + sigma^2 * div_D2 / 2
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
         Rₖ₊₁ = randn()
-        diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
+        diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
         # update the configuration
-        q += drift * dt + diffusion * sqrt_dt
-        q_traj[i] = q
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[i] = x
         
         # update the time
         t += dt
@@ -63,11 +64,11 @@ function leimkuhler_matthews1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer
         Rₖ = copy(Rₖ₊₁)      
     end 
     
-    return q_traj, Rₖ
+    return x_traj, Rₖ
 end
 
 function leimkuhler_matthews_markovian1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
-    # Caution: does not support variable diffusion other than D(x) = 1.
+    # Caution: does not converge for diffusion other than D(x) = 1.
 
     D² = x -> D(x)^2
     
@@ -221,8 +222,8 @@ function hummer_leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::
     
     # set up
     t = 0.0
-    q = copy(q0)
-    q_traj = zeros(m)
+    x = copy(x0)
+    x_traj = zeros(m)
     if Rₖ === nothing
         Rₖ = randn()
     end
@@ -231,16 +232,16 @@ function hummer_leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::
     # simulate
     for i in 1:m
         # compute the drift and diffusion coefficients
-        Dq = D(q)
-        grad_V = Vprime(q)
-        div_D2 = D2prime(q)
-        drift = -(Dq^2) * grad_V + (3/4) * sigma^2 * div_D2 / 2
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + (3/4) * sigma^2 * div_D2 / 2
         Rₖ₊₁ = randn()
-        diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
+        diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt_dt
-        q_traj[i] = q
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[i] = x
         
         # update the time
         t += dt
@@ -249,7 +250,7 @@ function hummer_leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::
         Rₖ = copy(Rₖ₊₁)      
     end 
     
-    return q_traj, Rₖ
+    return x_traj, Rₖ
 end
 
 function milstein_method1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
@@ -325,34 +326,34 @@ function stochastic_heun1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt
 end
 
 
-function euler_maruyama2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+function euler_maruyama2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0
-    q = copy(q0)
-    n = length(q0)
-    q_traj = zeros(n, m)
+    x = copy(x0)
+    n = 2 # dimension
+    x_traj = zeros(n, m)
     sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
         # compute the drift and diffusion coefficients
-        grad_V = Vprime(q[1], q[2])
-        Dq = D(q[1], q[2])
-        DDTq = Dq * Dq'
-        div_DDTq = div_DDT(q[1], q[2])
-        drift = -DDTq * grad_V + (sigma^2) * div_DDTq / 2 
-        diffusion = sigma * Dq * randn(n)
+        grad_V = Vprime(x[1], x[2])
+        D_x = D(x[1], x[2])
+        DDT_x = D_x * D_x'
+        div_DDT_x = div_DDT(x[1], x[2])
+        drift = -DDT_x * grad_V + (sigma^2) * div_DDT_x / 2 
+        diffusion = sigma * D_x * randn(n)
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt_dt
-        q_traj[:,i] .= q
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
         
         # update the time
         t += dt
     end
     
-    return q_traj, nothing
+    return x_traj, nothing
 end
 
 """
@@ -424,12 +425,12 @@ function naive_leimkuhler_matthews2D_identityD(q0, Vprime, D, div_DDT, sigma::Nu
     return q_traj, Rₖ
 end
 
-function naive_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+function naive_leimkuhler_matthews2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
     
     # set up
     t = 0.0
-    q = copy(q0)
-    n = length(q0)
+    x = copy(x0)
+    n = 2
     q_traj = zeros(n, m)
     if Rₖ === nothing
         Rₖ = randn(n)
@@ -439,17 +440,17 @@ function naive_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::I
     # simulate
     for i in 1:m
         # compute the drift and diffusion coefficients
-        grad_V = Vprime(q[1], q[2])
-        Dq = D(q[1], q[2])
-        DDTq = Dq * Dq'
-        div_DDTq = div_DDT(q[1], q[2])
-        drift = -DDTq * grad_V + (sigma^2)/2 * div_DDTq 
+        grad_V = Vprime(x[1], x[2])
+        D_x = D(x[1], x[2])
+        DDT_x = D_x * D_x'
+        div_DDT_x = div_DDT(x[1], x[2])
+        drift = -DDT_x * grad_V + (sigma^2)/2 * div_DDT_x 
         Rₖ₊₁ = randn(n)
-        diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
+        diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt_dt
-        q_traj[:,i] .= q
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
         
         # update the time
         t += dt
@@ -458,16 +459,16 @@ function naive_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::I
         Rₖ = copy(Rₖ₊₁)      
     end 
     
-    return q_traj, Rₖ
+    return x_traj, Rₖ
 end
 
-function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+function hummer_leimkuhler_matthews2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0
-    q = copy(q0)
-    n = length(q0)
-    q_traj = zeros(n, m)
+    x = copy(x0)
+    n = 2
+    x_traj = zeros(n, m)
     if Rₖ === nothing
         Rₖ = randn(n)
     end
@@ -476,17 +477,17 @@ function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::
     # simulate
     for i in 1:m
         # compute the drift and diffusion coefficients
-        grad_V = Vprime(q[1], q[2])
-        Dq = D(q[1], q[2])
-        DDTq = Dq * Dq'
-        div_DDTq = div_DDT(q[1], q[2])
-        drift = -DDTq * grad_V + (3/8) * (sigma^2) * div_DDTq 
+        grad_V = Vprime(x[1], x[2])
+        D_x = D(x[1], x[2])
+        DDT_x = D_x * D_x'
+        div_DDT_x = div_DDT(x[1], x[2])
+        drift = -DDT_x * grad_V + (3/8) * (sigma^2) * div_DDT_x 
         Rₖ₊₁ = randn(n)
-        diffusion = sigma * Dq * (Rₖ + Rₖ₊₁)/2 
+        diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
-        q += drift * dt + diffusion * sqrt_dt
-        q_traj[:,i] .= q
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
         
         # update the time
         t += dt
@@ -495,7 +496,7 @@ function hummer_leimkuhler_matthews2D(q0, Vprime, D, div_DDT, sigma::Number, m::
         Rₖ = copy(Rₖ₊₁)      
     end 
     
-    return q_traj, Rₖ
+    return x_traj, Rₖ
 end
 
 function stochastic_heun2D(q0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
