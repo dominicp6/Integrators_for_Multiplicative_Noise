@@ -4,11 +4,11 @@ using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D
 export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, naive_leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, eugen
 
-function euler_maruyama1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0
-    q = copy(q0)
+    x = copy(x0)
     q_traj = zeros(m)
     sqrt_dt = sqrt(dt)
 
@@ -29,15 +29,15 @@ function euler_maruyama1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
         t += dt
     end
     
-    return q_traj, nothing
+    return x_traj, nothing
 end
 
-function leimkuhler_matthews1D(q0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+function leimkuhler_matthews1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0
-    q = copy(q0)
-    q_traj = zeros(m)
+    x = copy(x0)
+    x_traj = zeros(m)
     if Rₖ === nothing
         Rₖ = randn()
     end
