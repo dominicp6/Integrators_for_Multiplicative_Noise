@@ -132,7 +132,7 @@ function run_2D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
 
     # Save the error data and plot
     save_and_plot(integrator, convergence_errors, stepsizes, save_dir)
-    plot_histograms(integrator, histogram_data, stepsizes, save_dir)
+    # plot_histograms(integrator, histogram_data, stepsizes, save_dir)
 
     # Print the mean and standard deviation of the L1 errors
     @info "Mean L1 errors: $(mean(convergence_errors, dims=2))"
