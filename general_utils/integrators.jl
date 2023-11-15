@@ -175,19 +175,19 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
         D_x = D(x)
         grad_V = Vprime(x)
         grad_D = Dprime(x)
-        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_2_dt * grad_D / 2
+        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_dt_2 * grad_D 
         
         # Perform n steps of RK4 integration for hat_xₖ₊₁
         hat_xₖ₊₁ = x # Initialize hat_xₖ₊₁
         for j in 1:n
             # Compute intermediate values
-            k1 = inner_step * D(hat_xₖ₊₁) * hat_pₖ₊₁
-            k2 = inner_step * D(hat_xₖ₊₁ + 0.5 * k1) * hat_pₖ₊₁
-            k3 = inner_step * D(hat_xₖ₊₁ + 0.5 * k2) * hat_pₖ₊₁
-            k4 = inner_step * D(hat_xₖ₊₁ + k3) * hat_pₖ₊₁
+            k1 = inner_step * D(hat_xₖ₊₁) 
+            k2 = inner_step * D(hat_xₖ₊₁ + 0.5 * k1) 
+            k3 = inner_step * D(hat_xₖ₊₁ + 0.5 * k2) 
+            k4 = inner_step * D(hat_xₖ₊₁ + k3) 
             
             # Update state using weighted average of intermediate values
-            hat_xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+            hat_xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) * hat_pₖ₊₁
         end
         
         # Perform n steps of RK4 integration for xₖ₊₁
@@ -195,13 +195,13 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
         Rₖ₊₁ = randn()
         for j in 1:n
             # Compute intermediate values
-            k1 = inner_step * D(xₖ₊₁) * Rₖ₊₁
-            k2 = inner_step * D(xₖ₊₁ + 0.5 * k1) * Rₖ₊₁
-            k3 = inner_step * D(xₖ₊₁ + 0.5 * k2) * Rₖ₊₁
-            k4 = inner_step * D(xₖ₊₁ + k3) * Rₖ₊₁
+            k1 = inner_step * D(xₖ₊₁) 
+            k2 = inner_step * D(xₖ₊₁ + 0.5 * k1) 
+            k3 = inner_step * D(xₖ₊₁ + 0.5 * k2) 
+            k4 = inner_step * D(xₖ₊₁ + k3) 
             
             # Update state using weighted average of intermediate values
-            xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) * sigma / sqrt(2)
+            xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) * sigma * Rₖ₊₁ / sqrt(2)
         end
         
         # Update the trajectory
