@@ -1,6 +1,6 @@
 module DiffusionTensors
 using LinearAlgebra
-export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D
+export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D
 
 # This script defines preset diffusion tensors to test the code
 
@@ -10,6 +10,10 @@ end
 
 function Dabs1D(q::T) where T<:Real
     return 1.0 + abs(q)
+end
+
+function DabsSquareRoot1D(q::T) where T<:Real
+    return (1.0 + abs(q))^0.5
 end
     
 function Dquadratic1D(q::T) where T<:Real
