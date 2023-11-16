@@ -9,7 +9,7 @@ include("../general_utils/transform_utils.jl")
 include("../general_utils/experiment_utils.jl")
 using HCubature, QuadGK, FHist, JLD2, Statistics, .Threads, ProgressBars, JSON, Random, StatsBase, TimerOutputs, LombScargle, FFTW, Plots, Interpolations
 import .Calculus: differentiate1D
-import .ProbabilityUtils: compute_1D_mean_L1_error, compute_1D_invariant_distribution
+import .ProbabilityUtils: compute_1D_mean_L1_error, compute_1D_invariant_distribution, compute_expected_observable_1D
 import .PlottingUtils: save_and_plot
 import .MiscUtils: init_x0, create_directory_if_not_exists
 import .TransformUtils: increment_g_counts, increment_I_counts
@@ -41,7 +41,7 @@ Run a 1D finite-time experiment using the specified integrator and parameters.
 This function runs a 1D finite-time experiment with the specified integrator and system parameters. 
 The experiment is repeated `num_repeats` times, each time with different initial conditions. For each combination of step size and repeat, the weak error w.r.t. the invariant distribution is computed.
 """
-function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, noise_integrator=nothing, n=nothing)
+function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, noise_integrator=nothing, n=nothing, observable=nothing, expected_observable=nothing)
     
     # Make master directory
     make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, bin_boundaries, chunk_size, T)
@@ -53,6 +53,9 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
 
     # Initialise empty data array
     convergence_errors = zeros(length(stepsizes), num_repeats)
+    if observable != nothing
+        observable_errors = zeros(length(stepsizes), num_repeats)
+    end
 
     Threads.@threads for repeat in ProgressBar(1:num_repeats)
         # set the random seed for reproducibility
@@ -65,7 +68,8 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
         for (stepsize_idx, dt) in enumerate(stepsizes)
             steps_remaining = floor(Int, T / dt)                
             total_samples = Int(steps_remaining)                               
-            hist = Hist1D([], bin_boundaries)            
+            hist = Hist1D([], bin_boundaries)  
+            obs = 0.0          
 
             while steps_remaining > 0
                 # Run steps in chunks to minimise memory footprint
@@ -75,17 +79,28 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
                 q_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, steps_to_run, dt, nothing, noise_integrator, n)
                 q0 = copy(q_chunk[end])
                 hist += Hist1D(q_chunk, bin_boundaries)
+                if observable != nothing
+                    obs = ((total_samples - steps_remaining) * obs + sum(observable(q) for q in q_chunk)) / (total_samples - steps_remaining + steps_to_run)
+                end
                 
                 steps_remaining -= steps_to_run
             end
 
             # Compute the convergence error
             convergence_errors[stepsize_idx, repeat] = compute_1D_mean_L1_error(hist, probabilities, total_samples)
+            if observable != nothing
+                observable_errors[stepsize_idx, repeat] = abs(obs - expected_observable)
+            end
+
         end
     end
 
     # Save the error data and plot
     save_and_plot(integrator, convergence_errors, stepsizes, save_dir)
+    if observable != nothing
+        print(observable_errors)
+        save_and_plot(integrator, observable_errors, stepsizes, save_dir, suffix="_observable", error_in_mean=true)
+    end
 
     @info "Mean L1 errors: $(mean(convergence_errors, dims=2))"
     @info "Standard deviation of L1 errors: $(std(convergence_errors, dims=2))"
@@ -217,11 +232,18 @@ Parameters:
 Returns:
 - The function saves the results of each experiment in the specified `save_dir` and also saves the time convergence data in a file named "time.json".
 """
-function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, noise_integrator=nothing, n=nothing)
+function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, noise_integrator=nothing, n=nothing, observable=nothing)
     to = TimerOutput()
 
     @info "Computing the Invariant Distribution"
     exact_invariant_distribution = compute_1D_invariant_distribution(V, sigma, bin_boundaries)
+
+    if observable != nothing
+        expected_observable = compute_expected_observable_1D(V, sigma, observable)
+    else
+        expected_observable = nothing
+    end
+
 
     @info "Running Experiments"
     for integrator in integrators
@@ -229,7 +251,7 @@ function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsize
         # reset the random seed for reproducibility
         Random.seed!(1)
         @timeit to "Exp$(string(nameof(integrator)))" begin
-            _ = run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, x0=x0, noise_integrator=noise_integrator, n=n)
+            _ = run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, x0=x0, noise_integrator=noise_integrator, n=n, observable=observable, expected_observable=expected_observable)
         end
     end
 
