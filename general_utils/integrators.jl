@@ -1,7 +1,7 @@
 module Integrators
 include("calculus.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
-using .Calculus: symbolic_matrix_divergence2D
+using .Calculus: symbolic_matrix_divergence2D, differentiate1D
 export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, eugen
 
 function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
@@ -154,8 +154,6 @@ end
 
 
 function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=5)
-    
-    Dprime = x -> D2prime(x) / 2D(x)
 
     # set up
     t = 0.0
@@ -174,7 +172,8 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
     for i in 1:m
         D_x = D(x)
         grad_V = Vprime(x)
-        grad_D = Dprime(x)
+        grad_Dsquared = D2prime(x)
+        grad_D = grad_Dsquared / (2 * D_x)
         hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_dt_2 * grad_D 
         
         # Perform n steps of RK4 integration for hat_xₖ₊₁
