@@ -1,6 +1,6 @@
 module ProbabilityUtils
 using HCubature, QuadGK, FHist, HDF5, Statistics, StatsBase, Plots
-export compute_1D_invariant_distribution, compute_2D_invariant_distribution, compute_1D_mean_L1_error, compute_2D_mean_L1_error, compute_convergence_error
+export compute_1D_invariant_distribution, compute_2D_invariant_distribution, compute_1D_mean_L1_error, compute_2D_mean_L1_error, compute_convergence_error, compute_expected_observable_1D, compute_expected_observable_2D
 
 """
 Compute the expected counts in a 2D histogram of the configuration space
@@ -57,6 +57,36 @@ function compute_1D_invariant_distribution(V, sigma, bins; configuration_space=(
 
     return prob
 end
+
+"""
+Compute the expected value of an observable in 1D configuration space
+"""
+function compute_expected_observable_1D(V, sigma, observable; configuration_space=(-12, 12))
+    f(q) = observable(q) * exp(- 2* V(q) / sigma^2) 
+    exp_V(q) = exp(- 2* V(q) / sigma^2)
+    Z = quadgk(exp_V, configuration_space[1], configuration_space[2])[1]
+    integral_of_f, err = quadgk(f, configuration_space[1], configuration_space[2]) 
+    integral_of_observable = integral_of_f / Z
+    println("Integral of observable: $integral_of_observable")
+    println("Error in integral of observable: $err")
+    return integral_of_observable
+end
+
+function compute_expected_observable_2D(V, sigma, observable, xmin, ymin, xmax, ymax)
+    function V1arg(q)
+        x, y = q
+        return V(x, y)
+    end
+
+    f(q) = observable(q) * exp(-2 * V1arg(q) / sigma^2) 
+    exp_V(q) = exp(-2 * V1arg(q) / sigma^2)
+    Z = hcubature(exp_V, [-5, -5], [5, 5])[1]
+    integral_of_f, err = hcubature(f, [-5, -5], [5, 5])[1] 
+    integral_of_observable = integral_of_f / Z
+    println("Integral of observable: $integral_of_observable")
+    println("Error in integral of observable: $err")
+    return integral_of_observable
+end 
 
 """
 Compute the mean L1 error between the expected probability and
