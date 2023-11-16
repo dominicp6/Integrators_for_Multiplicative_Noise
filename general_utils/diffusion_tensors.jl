@@ -1,6 +1,6 @@
 module DiffusionTensors
 using LinearAlgebra
-export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D
+export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D
 
 # This script defines preset diffusion tensors to test the code
 
@@ -11,6 +11,10 @@ end
 function Dabs1D(q::T) where T<:Real
     return 1.0 + abs(q)
 end
+
+function DabsSquareRoot1D(q::T) where T<:Real
+    return (1.0 + abs(q))^0.5
+end
     
 function Dquadratic1D(q::T) where T<:Real
     return 1.0 + q^2 
@@ -18,6 +22,10 @@ end
 
 function Dcosperturb1D(q::T) where T<:Real
     return 1.5 + 0.5 * cos(q)
+end
+
+function Dsinperturb1D(q::T) where T<:Real
+    return 1.5 + 0.5 * sin(q)
 end
 
 function Dconst2D(x::T, y::T) where T<:Real
@@ -38,6 +46,12 @@ end
 
 function DmoroCardin(x::T, y::T) where T<:Real
     return (1.0 + 5.0 * exp(- (x^2 + y^2) / (2 * 0.3^2)))^(-1) * Matrix{Float64}(I, 2, 2)
+end
+
+function DmoroCardinAnisotropic(x::T, y::T) where T<:Real
+    theta_x = atan(y/x)
+    theta_y = atan(x/y)
+    return (1.0 + 5.0 * exp(- (x^2 + y^2) / (2 * 0.3^2)))^(-1) * [cos(theta_x)^2 cos(theta_x)*cos(theta_y); cos(theta_x)*cos(theta_y) cos(theta_y)^2]
 end
 
 function Doseen(x::T, y::T) where T<:Real

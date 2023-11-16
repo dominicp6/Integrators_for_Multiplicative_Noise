@@ -13,6 +13,16 @@ function q4Potential(q::T) where T<:Real
     return q^4 / 4
 end
 
+function q2Potential(q::T) where T<:Real
+    # 1D quadratic potential
+    return q^2 / 2
+end
+
+function q2Potential2D(x::T, y::T) where T<:Real
+    # 2D quadratic potential
+    return x^2 / 2 + y^2 / 2
+end
+
 function q4Potential2D(x::T, y::T) where T<:Real
     # 2D quartic potential
     return x^4 / 4 + y^4 / 4
