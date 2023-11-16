@@ -44,9 +44,9 @@ function plot_histograms(integrator, histogram_data, stepsizes, save_dir; xlabel
     end
 end
 
-function save_and_plot(integrator, y_datasets, x_dataset, save_dir; xlabel="dt", ylabel="Mean L1 error", error_in_mean=false, descriptor="", xscale=:log10, yscale=:log10)
+function save_and_plot(integrator, y_datasets, x_dataset, save_dir; xlabel="dt", ylabel="Mean L1 error", error_in_mean=false, descriptor="", xscale=:log10, yscale=:log10, suffix="")
     @info "Saving data"
-    h5write("$(save_dir)/$(integrator)$(descriptor).h5", "data", y_datasets)
+    h5write("$(save_dir)/$(integrator)$(descriptor)$(suffix).h5", "data", y_datasets)
 
     number_of_repeats = size(y_datasets, 2)
 
@@ -59,7 +59,7 @@ function save_and_plot(integrator, y_datasets, x_dataset, save_dir; xlabel="dt",
         plot!(x_dataset, mean(y_datasets, dims=2)+std(y_datasets, dims=2), ls=:dash, lc=:black, label="")
         plot!(x_dataset, mean(y_datasets, dims=2)-std(y_datasets, dims=2), ls=:dash, lc=:black, label="")
     end
-    savefig("$(save_dir)/$(integrator)$(descriptor).png")
+    savefig("$(save_dir)/$(integrator)$(descriptor)$(suffix).png")
 end
 
 function save_and_plot(integrator, convergence_data, diffusion_coefficient_data, stepsizes, save_dir; xlabel="dt", ylabel="Mean L1 error", error_in_mean=false)
