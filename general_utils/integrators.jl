@@ -148,6 +148,7 @@ function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, d
         drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
 
         x += drift * dt / 2
+        x_traj[i] = x
 
         # update the time
         t += dt
