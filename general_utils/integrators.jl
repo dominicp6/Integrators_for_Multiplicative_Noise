@@ -2,7 +2,7 @@ module Integrators
 include("calculus.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D, differentiate1D
-export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D
+export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D
 
 function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
@@ -121,6 +121,41 @@ function eugen_gilles1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::N
     return x_traj, nothing
 end
 
+function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+
+    # set up
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+
+        x += drift * dt / 2
+
+        Rₖ = randn()
+
+        x += noise_integrator(x, dt, D, Rₖ)
+
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+
+        x += drift * dt / 2
+
+        # update the time
+        t += dt
+    end
+
+    return x_traj, nothing
+end
+
 function eugen_gilles2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     D² = (x, y) -> D(x, y)^2
     F = (x, y) -> D²(x, y) * (-Vprime(x, y)) + sigma^2 * div_DDT(x, y) /2
@@ -216,8 +251,6 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
 
     return x_traj, Rₖ
 end
-
-using Random
 
 function limit_method_with_variable_diffusion_RK6_1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=5)
 
