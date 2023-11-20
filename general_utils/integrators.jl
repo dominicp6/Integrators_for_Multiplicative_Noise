@@ -2,7 +2,7 @@ module Integrators
 include("calculus.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D, differentiate1D
-export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D
+export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D
 
 function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
@@ -188,8 +188,9 @@ function eugen_gilles2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::N
     return x_traj, nothing
 end
 
-
 function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=5)
+    
+    Dprime = x -> D2prime(x) / 2D(x)
 
     # set up
     t = 0.0
@@ -208,21 +209,20 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
     for i in 1:m
         D_x = D(x)
         grad_V = Vprime(x)
-        grad_Dsquared = D2prime(x)
-        grad_D = grad_Dsquared / (2 * D_x)
-        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_dt_2 * grad_D 
+        grad_D = Dprime(x)
+        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_2_dt * grad_D / 2
         
         # Perform n steps of RK4 integration for hat_xₖ₊₁
         hat_xₖ₊₁ = x # Initialize hat_xₖ₊₁
         for j in 1:n
             # Compute intermediate values
-            k1 = inner_step * D(hat_xₖ₊₁) 
-            k2 = inner_step * D(hat_xₖ₊₁ + 0.5 * k1) 
-            k3 = inner_step * D(hat_xₖ₊₁ + 0.5 * k2) 
-            k4 = inner_step * D(hat_xₖ₊₁ + k3) 
+            k1 = inner_step * D(hat_xₖ₊₁) * hat_pₖ₊₁
+            k2 = inner_step * D(hat_xₖ₊₁ + 0.5 * k1) * hat_pₖ₊₁
+            k3 = inner_step * D(hat_xₖ₊₁ + 0.5 * k2) * hat_pₖ₊₁
+            k4 = inner_step * D(hat_xₖ₊₁ + k3) * hat_pₖ₊₁
             
             # Update state using weighted average of intermediate values
-            hat_xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) * hat_pₖ₊₁
+            hat_xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         end
         
         # Perform n steps of RK4 integration for xₖ₊₁
@@ -230,13 +230,13 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
         Rₖ₊₁ = randn()
         for j in 1:n
             # Compute intermediate values
-            k1 = inner_step * D(xₖ₊₁) 
-            k2 = inner_step * D(xₖ₊₁ + 0.5 * k1) 
-            k3 = inner_step * D(xₖ₊₁ + 0.5 * k2) 
-            k4 = inner_step * D(xₖ₊₁ + k3) 
+            k1 = inner_step * D(xₖ₊₁) * Rₖ₊₁
+            k2 = inner_step * D(xₖ₊₁ + 0.5 * k1) * Rₖ₊₁
+            k3 = inner_step * D(xₖ₊₁ + 0.5 * k2) * Rₖ₊₁
+            k4 = inner_step * D(xₖ₊₁ + k3) * Rₖ₊₁
             
             # Update state using weighted average of intermediate values
-            xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) * sigma * Rₖ₊₁ / sqrt(2)
+            xₖ₊₁ += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) * sigma / sqrt(2)
         end
         
         # Update the trajectory
@@ -252,6 +252,7 @@ function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::N
 
     return x_traj, Rₖ
 end
+
 
 function limit_method_with_variable_diffusion_RK6_1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=5)
 
@@ -274,22 +275,22 @@ function limit_method_with_variable_diffusion_RK6_1D(x0, Vprime, D, D2prime, sig
         grad_V = Vprime(x)
         grad_Dsquared = D2prime(x)
         grad_D = grad_Dsquared / (2 * D_x)
-        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_dt_2 * grad_D 
+        hat_pₖ₊₁ = sigma * Rₖ / sqrt_2 - sqrt_2_dt * D_x * grad_V + (sigma^2) * sqrt_2_dt * grad_D / 2
         
         # Perform n steps of RK8 integration for hat_xₖ₊₁
         hat_xₖ₊₁ = x # Initialize hat_xₖ₊₁
         for j in 1:n
             # Compute intermediate values
-            k1 = inner_step * D(hat_xₖ₊₁) 
-            k2 = inner_step * D(hat_xₖ₊₁ + (1/3) * k1)
-            k3 = inner_step * D(hat_xₖ₊₁ + (2/3) * k2)
-            k4 = inner_step * D(hat_xₖ₊₁ + (1/12) * k1 + (1/3) * k2 - (1/12) * k3)
-            k5 = inner_step * D(hat_xₖ₊₁ - (1/16) * k1 + (9/8) * k2 - (3/16) * k3 - (3/8) * k4)
-            k6 = inner_step * D(hat_xₖ₊₁ + (9/8) * k2 - (3/8) * k3 - (3/4) * k4 + (1/2) * k5)
-            k7 = inner_step * D(hat_xₖ₊₁ + (9/44) * k1 - (9/11) * k2 + (63/74) * k3 + (18/11) * k4 - (16/11) * k6)
+            k1 = inner_step * D(hat_xₖ₊₁) * hat_pₖ₊₁
+            k2 = inner_step * D(hat_xₖ₊₁ + (1/3) * k1) * hat_pₖ₊₁
+            k3 = inner_step * D(hat_xₖ₊₁ + (2/3) * k2) * hat_pₖ₊₁
+            k4 = inner_step * D(hat_xₖ₊₁ + (1/12) * k1 + (1/3) * k2 - (1/12) * k3) * hat_pₖ₊₁
+            k5 = inner_step * D(hat_xₖ₊₁ - (1/16) * k1 + (9/8) * k2 - (3/16) * k3 - (3/8) * k4) * hat_pₖ₊₁
+            k6 = inner_step * D(hat_xₖ₊₁ + (9/8) * k2 - (3/8) * k3 - (3/4) * k4 + (1/2) * k5) * hat_pₖ₊₁
+            k7 = inner_step * D(hat_xₖ₊₁ + (9/44) * k1 - (9/11) * k2 + (63/74) * k3 + (18/11) * k4 - (16/11) * k6) * hat_pₖ₊₁
             
             # Update state using weighted average of intermediate values
-            hat_xₖ₊₁ += ((11/120)*k1 + (27/40)*k3 + (27/40)*k4 - (4/15)*k5 - (4/15)*k6 + (11/120)*k7) * hat_pₖ₊₁
+            hat_xₖ₊₁ += ((11/120)*k1 + (27/40)*k3 + (27/40)*k4 - (4/15)*k5 - (4/15)*k6 + (11/120)*k7) 
         end
         
         # Perform n steps of RK8 integration for xₖ₊₁
@@ -297,16 +298,16 @@ function limit_method_with_variable_diffusion_RK6_1D(x0, Vprime, D, D2prime, sig
         Rₖ₊₁ = randn()
         for j in 1:n
             # Compute intermediate values
-            k1 = inner_step * D(xₖ₊₁) 
-            k2 = inner_step * D(xₖ₊₁ + (1/3) * k1)
-            k3 = inner_step * D(xₖ₊₁ + (2/3) * k2)
-            k4 = inner_step * D(xₖ₊₁ + (1/12) * k1 + (1/3) * k2 - (1/12) * k3)
-            k5 = inner_step * D(xₖ₊₁ - (1/16) * k1 + (9/8) * k2 - (3/16) * k3 - (3/8) * k4)
-            k6 = inner_step * D(xₖ₊₁ + (9/8) * k2 - (3/8) * k3 - (3/4) * k4 + (1/2) * k5)
-            k7 = inner_step * D(xₖ₊₁ + (9/44) * k1 - (9/11) * k2 + (63/74) * k3 + (18/11) * k4 - (16/11) * k6)
+            k1 = inner_step * D(xₖ₊₁) * Rₖ₊₁
+            k2 = inner_step * D(xₖ₊₁ + (1/3) * k1) * Rₖ₊₁
+            k3 = inner_step * D(xₖ₊₁ + (2/3) * k2) * Rₖ₊₁
+            k4 = inner_step * D(xₖ₊₁ + (1/12) * k1 + (1/3) * k2 - (1/12) * k3) * Rₖ₊₁
+            k5 = inner_step * D(xₖ₊₁ - (1/16) * k1 + (9/8) * k2 - (3/16) * k3 - (3/8) * k4) * Rₖ₊₁
+            k6 = inner_step * D(xₖ₊₁ + (9/8) * k2 - (3/8) * k3 - (3/4) * k4 + (1/2) * k5) * Rₖ₊₁
+            k7 = inner_step * D(xₖ₊₁ + (9/44) * k1 - (9/11) * k2 + (63/74) * k3 + (18/11) * k4 - (16/11) * k6) * Rₖ₊₁
             
             # Update state using weighted average of intermediate values
-            xₖ₊₁ += ((11/120)*k1 + (27/40)*k3 + (27/40)*k4 - (4/15)*k5 - (4/15)*k6 + (11/120)*k7) * sigma * Rₖ₊₁ / sqrt(2)
+            xₖ₊₁ += ((11/120)*k1 + (27/40)*k3 + (27/40)*k4 - (4/15)*k5 - (4/15)*k6 + (11/120)*k7) * sigma / sqrt(2)
         end
         
         # Update the trajectory
