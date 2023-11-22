@@ -8,7 +8,7 @@ include("./general_utils/calculus.jl")
 
 import .Integrators: euler_maruyama2D, eugen_gilles2D, hummer_leimkuhler_matthews2D
 import .Potentials: softQuadrupleWell2D
-import .DiffusionTensors: DmoroCardin
+import .DiffusionTensors: DmoroCardin, DmoroCardinAnisotropic
 import .ProbabilityUtils: compute_1D_invariant_distribution
 import .Experiments2D: master_2D_experiment
 import .IntegratorUtils: MT2_2D, W2Ito1_2D
@@ -28,18 +28,18 @@ ymax = 3
 n_bins = 30   # number of bins in each dimensio
 R = Matrix{Float64}(I, 2, 2)
 
-T = 5000000                           # length of simulation
+T = 10000000                           # length of simulation
 sigma = 1                            
 num_repeats = 10      
 
 # The potential and diffusion coefficents to use
 potential = softQuadrupleWell2D
-diffusion = DmoroCardin
+diffusion = DmoroCardinAnisotropic
 
 master_dir = "./simulation_results"     # Directory to save results in
 
 # Experiment 1 ---------------------------------------------------------------
-exp_name = "quartic_cos_noise_2D_MT2_5M"     # Name
+exp_name = "anisotropicMoroCardin_MT2_10M"     # Name
 save_dir = "$(master_dir)/$(exp_name)"
 integrators = [eugen_gilles2D] 
 noise_integrator = MT2_2D
@@ -49,7 +49,7 @@ n = nothing
 master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
 # # Experiment 2 ---------------------------------------------------------------
-exp_name = "quartic_cos_noise_2D_W2Ito1_5M"     # Name
+exp_name = "anisotropicMoroCardin_W2Ito1_10M"     # Name
 save_dir = "$(master_dir)/$(exp_name)"
 integrators = [eugen_gilles2D]
 noise_integrator = W2Ito1_2D
@@ -59,7 +59,7 @@ n = nothing
 master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
 # # Experiment 3 ---------------------------------------------------------------
-exp_name = "quartic_cos_noise_2D_EM_5M"     # Name
+exp_name = "anisotropicMoroCardin_EM_10M"     # Name
 save_dir = "$(master_dir)/$(exp_name)"
 integrators = [euler_maruyama2D]
 n = nothing
@@ -68,7 +68,7 @@ n = nothing
 master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
 # # Experiment 4 ---------------------------------------------------------------
-exp_name = "quartic_cos_noise_2D_HLM_5M"     # Name
+exp_name = "anisotropicMoroCardin_HLM_10M"     # Name
 save_dir = "$(master_dir)/$(exp_name)"
 integrators = [hummer_leimkuhler_matthews2D]
 n = nothing

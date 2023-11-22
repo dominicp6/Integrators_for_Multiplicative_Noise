@@ -1,5 +1,5 @@
 module ProbabilityUtils
-using HCubature, QuadGK, FHist, HDF5, Statistics, StatsBase, Plots
+using HCubature, QuadGK, FHist, Statistics, StatsBase, Plots
 export compute_1D_invariant_distribution, compute_2D_invariant_distribution, compute_1D_mean_L1_error, compute_2D_mean_L1_error, compute_convergence_error, compute_expected_observable_1D, compute_expected_observable_2D
 
 """
