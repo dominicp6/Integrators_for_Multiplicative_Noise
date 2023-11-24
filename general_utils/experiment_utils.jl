@@ -9,17 +9,9 @@ export make_experiment_folders, run_chunk
 """
 Creates necessary directories and save experiment parameters for the 1D experiment.
 """
-function make_experiment_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, sigma, x_bins, chunk_size, time_transform, space_transform; T=nothing, target_uncertainty=nothing)
+function make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, x_bins, chunk_size, time_transform, space_transform; T=nothing)
     # Make master directory
     create_directory_if_not_exists(save_dir)
-
-    # Make subdirectories for checkpoints
-    if checkpoint
-        create_directory_if_not_exists("$(save_dir)/checkpoints")
-        for dt in stepsizes
-            create_directory_if_not_exists("$(save_dir)/checkpoints/$(string(nameof(integrator)))/h=$dt")
-        end
-    end
 
     if !isfile("$(save_dir)/info.json")
         @info "Saving metadata"
@@ -28,7 +20,6 @@ function make_experiment_folders(save_dir, integrator, stepsizes, checkpoint, nu
                         "V" => string(nameof(V)),
                         "D" => string(nameof(D)),
                         "T" => T,
-                        "target_uncertainty" => target_uncertainty,
                         "sigma" => sigma,
                         "stepsizes" => stepsizes,
                         "x_bins" => x_bins,

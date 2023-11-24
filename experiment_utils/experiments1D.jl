@@ -53,7 +53,7 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
 
     # Initialise empty data array
     convergence_errors = zeros(length(stepsizes), num_repeats)
-    if observable != nothing
+    if observable !== nothing
         observable_errors = zeros(length(stepsizes), num_repeats)
     end
 
@@ -79,7 +79,7 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
                 q_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, steps_to_run, dt, nothing, noise_integrator, n)
                 q0 = copy(q_chunk[end])
                 hist += Hist1D(q_chunk, bin_boundaries)
-                if observable != nothing
+                if observable !== nothing
                     obs = ((total_samples - steps_remaining) * obs + sum(observable(q) for q in q_chunk)) / (total_samples - steps_remaining + steps_to_run)
                 end
                 
@@ -88,7 +88,7 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
 
             # Compute the convergence error
             convergence_errors[stepsize_idx, repeat] = compute_1D_mean_L1_error(hist, probabilities, total_samples)
-            if observable != nothing
+            if observable !== nothing
                 observable_errors[stepsize_idx, repeat] = abs(obs - expected_observable)
             end
 
@@ -238,7 +238,7 @@ function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsize
     @info "Computing the Invariant Distribution"
     exact_invariant_distribution = compute_1D_invariant_distribution(V, sigma, bin_boundaries)
 
-    if observable != nothing
+    if observable !== nothing
         expected_observable = compute_expected_observable_1D(V, sigma, observable)
     else
         expected_observable = nothing

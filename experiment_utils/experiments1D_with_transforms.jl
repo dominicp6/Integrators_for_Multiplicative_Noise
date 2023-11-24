@@ -5,12 +5,50 @@ include("../general_utils/diffusion_tensors.jl")
 include("../general_utils/probability_utils.jl")
 include("../general_utils/plotting_utils.jl")
 include("../general_utils/transform_utils.jl")
+include("../general_utils/misc_utils.jl")
+include("../general_utils/experiment_utils.jl")
+include("../general_utils/transform_utils.jl")
 using HCubature, QuadGK, FHist, JLD2, Statistics, .Threads, ProgressBars, JSON, Random, StatsBase, TimerOutputs, LombScargle, FFTW, Plots, Interpolations
 import .Calculus: differentiate1D
-import .ProbabilityUtils: compute_1D_mean_L1_error, compute_1D_invariant_distribution
+import .ProbabilityUtils: compute_1D_mean_L1_error, compute_1D_invariant_distribution, compute_convergence_error
 import .PlottingUtils: save_and_plot
 import .DiffusionTensors: Dconst1D
-export run_1D_experiment, master_1D_experiment, run_1D_experiment_until_given_error, run_autocorrelation_experiment, run_ess_autocorrelation_experiment
+import .MiscUtils: init_x0, create_directory_if_not_exists
+import .ExperimentUtils: make_experiment_folders
+import .TransformUtils: transform_potential_and_diffusion, increment_g_counts, increment_I_counts
+export run_1D_experiment_with_transforms, master_1D_experiment_with_transforms, run_1D_experiment_until_given_error, run_autocorrelation_experiment, run_ess_autocorrelation_experiment
+
+
+"""
+The `run_chunk` function runs a chunk of the 1D finite-time simulation using the specified integrator and parameters.
+It performs the simulation for `steps_to_run` time steps and updates the histogram with the trajectory data.
+
+Note: The function is typically called within the context of the main simulation loop, and its results are used for further analysis.
+"""
+function run_chunk_with_transforms(integrator, x0, Vprime, D, Dprime, tau::Number, dt::Number, steps_to_run::Integer, hist, bin_boundaries, chunk_number::Integer, time_transform::Bool, space_transform:: Bool, ΣgI::Union{Vector, Nothing}, Σg::Union{Float64, Nothing}, ΣI::Union{Vector, Nothing}, original_D, x_of_y)
+
+    # Run a chunk of the simulation
+    x_chunk, _ = integrator(x0, Vprime, D, Dprime, tau, steps_to_run, dt)
+
+    # Get the last position of the chunk
+    x0 = copy(x_chunk[end])
+
+    # [For time-transformed integrators] Increment g counts (see paper for details)
+    if time_transform
+        ΣgI, Σg =  increment_g_counts(x_chunk, original_D, bin_boundaries, ΣgI, Σg)
+    end
+
+    # [For space-transformed integrators] Increment I counts (see paper for details)
+    if space_transform
+        ΣI = increment_I_counts(x_chunk, x_of_y, bin_boundaries, ΣI)
+    end
+
+    # Update the number of steps left to run
+    hist += Hist1D(x_chunk, bin_boundaries)
+    chunk_number += 1
+
+    return x0, hist, chunk_number, ΣgI, Σg, ΣI
+end
 
 
 """
@@ -43,10 +81,10 @@ The experiment is repeated `num_repeats` times, each time with different initial
 
 Note: The `V` and `D` functions may be modified internally to implement time or space transformations, based on the provided `time_transform` and `space_transform` arguments.
 """
-function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, checkpoint=false, q0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
+function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
     
     # Make master directory
-    make_experiment_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, sigma, bin_boundaries, chunk_size, time_transform, space_transform, T=T)
+    make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, bin_boundaries, chunk_size, time_transform, space_transform, T=T)
 
     original_D = D
     
@@ -65,7 +103,7 @@ function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sig
         Random.seed!(repeat) 
 
         # If no initial position is provided, randomly initialise
-        q0 = init_q0(q0, dim=1)
+        x0 = init_x0(x0, dim=1)
 
         # Run the simulation for each specified step size
         for (stepsize_idx, dt) in enumerate(stepsizes)
@@ -85,17 +123,13 @@ function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sig
             while steps_remaining > 0
                 # Run steps in chunks to minimise memory footprint
                 steps_to_run = convert(Int, min(steps_remaining, chunk_size))
-                q0, hist, chunk_number, ΣgI, Σg, ΣI = run_chunk_with_transforms(integrator, q0, Vprime, D, Dprime, sigma, dt, steps_to_run, hist, bin_boundaries, chunk_number, time_transform, space_transform, ΣgI, Σg, ΣI, original_D, x_of_y)
+                x0, hist, chunk_number, ΣgI, Σg, ΣI = run_chunk_with_transforms(integrator, x0, Vprime, D, Dprime, sigma, dt, steps_to_run, hist, bin_boundaries, chunk_number, time_transform, space_transform, ΣgI, Σg, ΣI, original_D, x_of_y)
                 steps_remaining -= steps_to_run
             end
 
             # Compute the convergence error
             convergence_errors[stepsize_idx, repeat] = compute_convergence_error(hist, probabilities, total_samples, time_transform, space_transform, ΣgI, Σg, ΣI)
 
-            if checkpoint
-                # Save the histograms
-                save("$(save_dir)/checkpoints/$(string(nameof(integrator)))/h=$dt/$(repeat).jld2", "data", hist)
-            end
         end
     end
 
@@ -137,7 +171,7 @@ Note:
 - If `time_transform` is true, the potential function V(x) is transformed to ensure constant diffusion.
 - If `space_transform` is true, the potential function V(x) is transformed based on the provided mapping x_of_y to ensure constant diffusion.
 """
-function run_1D_experiment_until_given_error_with_transforms(integrator, num_repeats, V, D, sigma, stepsizes, probabilities, bin_boundaries, save_dir, target_error; chunk_size=10000, checkpoint=false, q0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
+function run_1D_experiment_until_given_error_with_transforms(integrator, num_repeats, V, D, sigma, stepsizes, probabilities, bin_boundaries, save_dir, target_error; chunk_size=10000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
     
     # Create the experiment folders
     make_experiment_folders(save_dir, integrator, stepsizes, checkpoint, num_repeats, V, D, sigma, bin_boundaries, chunk_size, time_transform, space_transform, target_uncertainty=target_error)
@@ -157,7 +191,7 @@ function run_1D_experiment_until_given_error_with_transforms(integrator, num_rep
     Threads.@threads for repeat in ProgressBar(1:num_repeats)
         # set the random seed for reproducibility
         Random.seed!(repeat) 
-        q0 = init_q0(q0)
+        x0 = init_x0(x0)
 
         # Run the simulation for each specified step size
         for (stepsize_idx, dt) in enumerate(stepsizes)
@@ -176,7 +210,7 @@ function run_1D_experiment_until_given_error_with_transforms(integrator, num_rep
 
             while error > target_error
                 # Run steps in chunks to minimise memory footprint
-                q0, hist, chunk_number, ΣgI, Σg, ΣI = run_chunk_with_transforms(integrator, q0, Vprime, D, Dprime, sigma, dt, chunk_size, hist, bin_boundaries, chunk_number, time_transform, space_transform, ΣgI, Σg, ΣI, original_D, x_of_y)
+                x0, hist, chunk_number, ΣgI, Σg, ΣI = run_chunk_with_transforms(integrator, x0, Vprime, D, Dprime, sigma, dt, chunk_size, hist, bin_boundaries, chunk_number, time_transform, space_transform, ΣgI, Σg, ΣI, original_D, x_of_y)
                 steps_ran += chunk_size
                 
                 # Compute the current error
@@ -239,12 +273,12 @@ function run_ess_autocorrelation_experiment_with_transforms(integrator, num_repe
         Random.seed!(time_ns())
         total_samples = floor(Int, T/stepsize)
 
-        q0 = init_q0(nothing)
+        x0 = init_x0(nothing)
 
-        q_traj, _ = integrator(q0, Vprime, D, Dprime, sigma, total_samples, stepsize)
+        x_traj, _ = integrator(x0, Vprime, D, Dprime, sigma, total_samples, stepsize)
 
         # Compute the autocorrelation
-        ac = autocor(q_traj, 1:max_lag)
+        ac = autocor(x_traj, 1:max_lag)
 
         # Populate the data arrays
         ac_data[:, repeat] = ac
@@ -362,7 +396,7 @@ Parameters:
 Returns:
 - The function saves the results of each experiment in the specified `save_dir` and also saves the time convergence data in a file named "time.json".
 """
-function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=10000000, checkpoint=false, q0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
+function master_1D_experiment_with_transforms(integrators, num_repeats, V, D, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
     to = TimerOutput()
 
     @info "Computing the Invariant Distribution"
@@ -372,7 +406,7 @@ function master_1D_experiment(integrators, num_repeats, V, D, T, sigma, stepsize
     for integrator in integrators
         @info "Running $(string(nameof(integrator))) experiment"
         @timeit to "Exp$(string(nameof(integrator)))" begin
-            _ = run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, checkpoint=checkpoint, q0=q0, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y)
+            _ = run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, x0=x0, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y)
         end
     end
 

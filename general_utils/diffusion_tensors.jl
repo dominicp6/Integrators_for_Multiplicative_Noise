@@ -1,6 +1,6 @@
 module DiffusionTensors
 using LinearAlgebra
-export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D
+export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D, DmoroCardinAnisotropic
 
 # This script defines preset diffusion tensors to test the code
 

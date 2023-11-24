@@ -1,5 +1,5 @@
 module PlottingUtils
-using Plots, FHist, HDF5, Statistics
+using Plots, FHist, CSV, Tables, Statistics
 export plot_trajectory, plot_2D_potential, plot_histograms, save_and_plot
 
 function plot_trajectory(q, dt)
@@ -46,7 +46,7 @@ end
 
 function save_and_plot(integrator, y_datasets, x_dataset, save_dir; xlabel="dt", ylabel="Mean L1 error", error_in_mean=false, descriptor="", xscale=:log10, yscale=:log10, suffix="")
     @info "Saving data"
-    h5write("$(save_dir)/$(integrator)$(descriptor)$(suffix).h5", "data", y_datasets)
+    CSV.write("$(save_dir)/$(integrator)$(descriptor)$(suffix).csv", Tables.table(y_datasets), writeheader=false)
 
     number_of_repeats = size(y_datasets, 2)
 
@@ -64,7 +64,7 @@ end
 
 function save_and_plot(integrator, convergence_data, diffusion_coefficient_data, stepsizes, save_dir; xlabel="dt", ylabel="Mean L1 error", error_in_mean=false)
     @info "Saving data"
-    h5write("$(save_dir)/$(integrator).h5", "data", convergence_data)
+    CSV.write("$(save_dir)/$(integrator).csv", Tables.table(convergence_data), writeheader=false)
 
     number_of_repeats = size(convergence_data, 2)
 

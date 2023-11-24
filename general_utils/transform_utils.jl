@@ -1,5 +1,7 @@
 module TransformUtils
+include("../general_utils/diffusion_tensors.jl")
 using FHist, StatsBase
+import .DiffusionTensors: Dconst1D
 export increment_g_counts, time_transformed_potential, increment_I_counts, increment_g_counts2D, transform_potential_and_diffusion
 
 function time_transformed_potential(x, V, D, sigma)
@@ -82,13 +84,13 @@ function transform_potential_and_diffusion(original_V, original_D, sigma, time_t
     @assert !(time_transform && space_transform) "Not supported to run both time and space transforms"
     
     if time_transform
-        V = x -> original_V(x) - sigma * log(original_D(x))
+        V = x -> original_V(x) - sigma^2 * log(original_D(x)) / 2
         D = Dconst1D
     end
 
     if space_transform
         @assert x_of_y !== nothing "x_of_y must be defined for space-transformed integrators"
-        V = y -> original_V(x_of_y(y)) - 0.5 * sigma * log(original_D(x_of_y(y)))
+        V = y -> original_V(x_of_y(y)) - 0.25 * sigma^2 * log(original_D(x_of_y(y)))
         D = Dconst1D
     end
 
