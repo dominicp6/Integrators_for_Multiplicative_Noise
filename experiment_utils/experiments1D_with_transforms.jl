@@ -106,8 +106,8 @@ function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sig
         x0 = init_x0(x0, dim=1)
 
         # Run the simulation for each specified step size
-        for (stepsize_idx, dt) in enumerate(stepsizes)
-            
+        for (stepsize_reverse_idx, dt) in enumerate(stepsizes[end:-1:1])
+            stepsize_idx = length(stepsizes) - stepsize_reverse_idx + 1
             steps_remaining = floor(Int, T / dt)                
             total_samples = Int(steps_remaining)
             chunk_number = 0                                 

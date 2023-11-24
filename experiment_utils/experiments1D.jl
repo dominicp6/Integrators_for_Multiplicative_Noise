@@ -65,7 +65,9 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
         x0 = init_x0(x0, dim=1)
 
         # Run the simulation for each specified step size
-        for (stepsize_idx, dt) in enumerate(stepsizes)
+        # Loop backwards, starting with the largest step size
+        for (stepsize_reverse_idx, dt) in enumerate(stepsizes[end:-1:1])
+            stepsize_idx = length(stepsizes) - stepsize_reverse_idx + 1
             steps_remaining = floor(Int, T / dt)                
             total_samples = Int(steps_remaining)                               
             hist = Hist1D([], bin_boundaries)  
