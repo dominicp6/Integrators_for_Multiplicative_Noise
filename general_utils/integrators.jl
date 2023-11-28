@@ -173,7 +173,6 @@ function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::In
         grad_V = Vprime(x)
         div_D2 = D2prime(x)
         drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
-
         x += drift * dt / 2
 
         x += EM_noise_1D(x, dt, D, sigma)
@@ -182,8 +181,8 @@ function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::In
         grad_V = Vprime(x)
         div_D2 = D2prime(x)
         drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
-
         x += drift * dt / 2
+        
         x_traj[i] = x
 
         # update the time

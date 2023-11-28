@@ -5,11 +5,16 @@ export MT2_1D, W2Ito1_1D, W2Ito1_2D, MT2_2D, EM_noise_1D
 function EM_noise_1D(x0, dt, D, sigma)
     # Number of substeps
     n = 20
+    sqrt_dt_n = sqrt(dt/n)
+
+    x = copy(x0)
     for i in 1:n
-        x0 += sigma * D(x0) * sqrt(dt/n) * randn()
+        x += sigma * D(x) * sqrt_dt_n * randn()
     end
 
-    return x0 
+    increment = x - x0
+
+    return increment
 end
 
 function MT2_1D(x0, dt, D, Rₖ)
