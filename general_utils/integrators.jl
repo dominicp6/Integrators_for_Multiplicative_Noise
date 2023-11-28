@@ -1,8 +1,10 @@
 module Integrators
 include("calculus.jl")
+include("integrator_utils.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D, differentiate1D
-export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D
+using .IntegratorUtils: EM_noise_1D
+export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D, strang_splitting_with_EM1D
 
 function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
@@ -141,6 +143,40 @@ function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, d
         Rₖ = randn()
 
         x += noise_integrator(x, dt, D, Rₖ)
+
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+
+        x += drift * dt / 2
+        x_traj[i] = x
+
+        # update the time
+        t += dt
+    end
+
+    return x_traj, nothing
+end
+
+function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+
+    # set up
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(m)
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        D_x = D(x)
+        grad_V = Vprime(x)
+        div_D2 = D2prime(x)
+        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+
+        x += drift * dt / 2
+
+        x += EM_noise_1D(x, dt, D, sigma)
 
         D_x = D(x)
         grad_V = Vprime(x)

@@ -1,6 +1,16 @@
 module IntegratorUtils
 using StatsBase
-export MT2_1D, W2Ito1_1D, W2Ito1_2D, MT2_2D
+export MT2_1D, W2Ito1_1D, W2Ito1_2D, MT2_2D, EM_noise_1D
+
+function EM_noise_1D(x0, dt, D, sigma)
+    # Number of substeps
+    n = 20
+    for i in 1:n
+        x0 += sigma * D(x0) * sqrt(dt/n) * randn()
+    end
+
+    return x0 
+end
 
 function MT2_1D(x0, dt, D, Rₖ)
 
