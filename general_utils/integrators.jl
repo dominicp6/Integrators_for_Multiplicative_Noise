@@ -129,27 +129,33 @@ function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, d
     t = 0.0
     x = copy(x0)
     x_traj = zeros(m)
-    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
-        D_x = D(x)
-        grad_V = Vprime(x)
-        div_D2 = D2prime(x)
-        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+        drift_term = x -> -(D(x)^2) * Vprime(x) + sigma^2 * D2prime(x) / 2
 
-        x += drift * dt / 2
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * drift_term(x)
+        k2 = (dt / 2) * drift_term(x + 0.5 * k1)
+        k3 = (dt / 2) * drift_term(x + 0.5 * k2)
+        k4 = (dt / 2) * drift_term(x + k3) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
 
         Rₖ = randn()
 
         x += noise_integrator(x, dt, D, Rₖ)
 
-        D_x = D(x)
-        grad_V = Vprime(x)
-        div_D2 = D2prime(x)
-        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * drift_term(x)
+        k2 = (dt / 2) * drift_term(x + 0.5 * k1)
+        k3 = (dt / 2) * drift_term(x + 0.5 * k2)
+        k4 = (dt / 2) * drift_term(x + k3) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
 
-        x += drift * dt / 2
         x_traj[i] = x
 
         # update the time
@@ -165,23 +171,30 @@ function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::In
     t = 0.0
     x = copy(x0)
     x_traj = zeros(m)
-    sqrt_dt = sqrt(dt)
 
     # simulate
     for i in 1:m
-        D_x = D(x)
-        grad_V = Vprime(x)
-        div_D2 = D2prime(x)
-        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
-        x += drift * dt / 2
+        drift_term = x -> -(D(x)^2) * Vprime(x) + sigma^2 * D2prime(x) / 2
+
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * drift_term(x)
+        k2 = (dt / 2) * drift_term(x + 0.5 * k1)
+        k3 = (dt / 2) * drift_term(x + 0.5 * k2)
+        k4 = (dt / 2) * drift_term(x + k3) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
 
         x += EM_noise_1D(x, dt, D, sigma)
 
-        D_x = D(x)
-        grad_V = Vprime(x)
-        div_D2 = D2prime(x)
-        drift = -(D_x^2) * grad_V + sigma^2 * div_D2 / 2
-        x += drift * dt / 2
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * drift_term(x)
+        k2 = (dt / 2) * drift_term(x + 0.5 * k1)
+        k3 = (dt / 2) * drift_term(x + 0.5 * k2)
+        k4 = (dt / 2) * drift_term(x + k3) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
         
         x_traj[i] = x
 
