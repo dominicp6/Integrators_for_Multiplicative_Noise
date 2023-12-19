@@ -107,17 +107,22 @@ function eugen_gilles1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::N
     sqrt_dt = sqrt(dt)
 
     # simulate
+    x_barₖ₋₁ = x 
+    F_x_barₖ₋₁ = F(x_barₖ₋₁)
     for i in 1:m
         Rₖ = randn()
         # choosing x_tilde = x
-        x_bar = x + 0.5 * sqrt_dt * sigma * D(x) * Rₖ
-        F_x_bar = F(x_bar)
-        x += dt * F_x_bar + noise_integrator(x + dt * F_x_bar / 4, dt, D, Rₖ)
+        x_barₖ = x + 0.5 * sqrt_dt * sigma * D(x) * Rₖ
+        F_x_barₖ = F(x_barₖ)
+        x += dt * F_x_barₖ + noise_integrator(x + dt * F_x_barₖ₋₁ / 4, dt, D, Rₖ)
 
-        x_traj[i] = x_bar
+        x_traj[i] = x_barₖ
 
         # update the time
         t += dt
+
+        x_barₖ₋₁ = copy(x_barₖ)
+        F_x_barₖ₋₁ = copy(F_x_barₖ)
     end
 
     return x_traj, nothing
@@ -220,17 +225,22 @@ function eugen_gilles2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::N
     sqrt_dt = sqrt(dt)
 
     # simulate
+    x_barₖ₋₁ = x 
+    F_x_barₖ₋₁ = F(x_barₖ₋₁...)
     for i in 1:m
         Rₖ = randn(2)
         # choosing x_tilde = x
-        x_bar = x + 0.5 * sqrt_dt * sigma * D(x...) * Rₖ
-        F_x_bar = F(x_bar...)
-        x += dt * F_x_bar + noise_integrator(x + dt * F_x_bar / 4, dt, D, D_1, D_2, Rₖ)
+        x_barₖ = x + 0.5 * sqrt_dt * sigma * D(x...) * Rₖ
+        F_x_barₖ = F(x_barₖ...)
+        x += dt * F_x_barₖ + noise_integrator(x + dt * F_x_barₖ₋₁ / 4, dt, D, D_1, D_2, Rₖ)
 
-        x_traj[:, i] .= x_bar
+        x_traj[:, i] .= x_barₖ
 
         # update the time
         t += dt
+
+        x_barₖ₋₁ = copy(x_barₖ)
+        F_x_barₖ₋₁ = copy(F_x_barₖ)
     end
 
     return x_traj, nothing
