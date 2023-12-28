@@ -52,6 +52,12 @@ function transformedSoftWell1D(q::T) where T<:Real
     return softWell1D(r) - log(1+ abs(q) + q^2 / 4)
 end
 
+function doubleWellChannel2D(x::T, y::T) where T<:Real
+    term1 = (5*y)^2  / ((5*x)^2 + 1)
+    term2 = (1/6) * (sqrt(4 * (1-x^2 - y^2)^2 + 2*(x^2 - 2)^2 + ((x+y)^2 -1)^2 +((x-y)^2 -1)^2) -2)
+
+    return term1 + term2
+
 function transformed2SoftWell1D(q::T) where T<:Real
     # transformed soft well 1D to remove linear diffusion D(q) = 1 + |q| (time rescaling)
     sigma = 1
