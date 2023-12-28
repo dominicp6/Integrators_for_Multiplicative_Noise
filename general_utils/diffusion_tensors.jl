@@ -65,6 +65,7 @@ function DdoubleWellChannelAnisotropic(x::T, y::T) where T<:Real
     potential = potential_term_1 + potential_term_2
 
     return [max(1.0, 2.0 - potential)/(1+min(abs(second_partial_x_derivative), 5)) 0; 0 max(1.0, 2.0 - potential)/(1+min(abs(second_partial_y_derivative), 5))]
+end
 
 function Doseen(x::T, y::T) where T<:Real
     r2 = x^2 + y^2
