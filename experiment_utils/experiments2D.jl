@@ -179,9 +179,9 @@ function master_2D_experiment(integrators, num_repeats, V, D, T, sigma, stepsize
         @info "Running $(string(nameof(integrator))) experiment"
         # reset the random seed for reproducibility
         Random.seed!(1)
-        @timeit to "Exp$(string(nameof(integrator)))" begin 
-            _ = run_2D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, x_bins, y_bins, save_dir, chunk_size=chunk_size, x0=x0, noise_integrator=noise_integrator, n=nothing)
-        end
+        #@timeit to "Exp$(string(nameof(integrator)))" begin 
+        _ = run_2D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, x_bins, y_bins, save_dir, chunk_size=chunk_size, x0=x0, noise_integrator=noise_integrator, n=nothing)
+        #end
     end
 
     # save the time convergence_data
