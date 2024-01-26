@@ -19,7 +19,7 @@ import .Calculus: differentiate1D
 master_dir = "./cluster_results"
 
 # LENGTH OF SIMULATION 
-T = 50000000
+T = 5000
 sigma = 1
 num_repeats = 12
 
