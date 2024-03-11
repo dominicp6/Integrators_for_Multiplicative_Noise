@@ -79,8 +79,8 @@ save_dir = "$(master_dir)/$(exp_name)"
 master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
 # EXPERIMENT NAME
-T = 5000000
-exp_name = "doubleWellChannel2D_const_EG_W2Ito_5M"
+T = 10000000
+exp_name = "doubleWellChannel2D_const_EG_W2Ito_10M"
 
 save_dir = "$(master_dir)/$(exp_name)"
 

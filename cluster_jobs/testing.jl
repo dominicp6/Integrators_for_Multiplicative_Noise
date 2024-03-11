@@ -9,7 +9,7 @@ include("../general_utils/calculus.jl")
 
 import .Integrators: eugen_gilles1D, euler_maruyama1D, hummer_leimkuhler_matthews1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, limit_method_with_variable_diffusion1D, euler_maruyama2D, eugen_gilles2D, limit_method_with_variable_diffusion_RK6_1D, hummer_leimkuhler_matthews2D
 import .Potentials: softWell1D, q4Potential, softQuadrupleWell2D, q4Potential2D, q2Potential
-import .DiffusionTensors: Dconst1D, Dabs1D, Dquadratic1D, Dcosperturb1D, Dconst2D, Dcosperturb2D, Dsinperturb1D, DmoroCardin, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIII
+import .DiffusionTensors: Dconst1D, Dabs1D, Dquadratic1D, Dcosperturb1D, Dconst2D, Dcosperturb2D, Dsinperturb1D, DmoroCardin
 import .ProbabilityUtils: compute_1D_invariant_distribution
 import .Experiments: master_1D_experiment, run_1D_experiment_until_given_error
 import .Experiments2D: master_2D_experiment
@@ -35,7 +35,7 @@ chunk_size = 100000;
 
 # POTENTIAL AND DIFFUSION
 potential = softQuadrupleWell2D
-diffusion = DanisotropicI
+diffusion = DmoroCardin
 
 # INTEGRATOR
 noise_integrator = W2Ito1_2D
@@ -44,42 +44,10 @@ integrators = [hummer_leimkuhler_matthews2D]
 
 # STEPSIZES
 number_of_stepsizes = 20
-stepsizes = 10 .^ range(-2.0, -0.4, length=number_of_stepsizes)
-
-# # EXPERIMENT NAME
-# exp_name = "quadWell2D_anisotropicI_HLM_500"
-
-# save_dir = "$(master_dir)/$(exp_name)"
-
-# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# # EXPERIMENT NAME
-# T = 5000
-# exp_name = "quadWell2D_anisotropicI_HLM_5K"
-
-# save_dir = "$(master_dir)/$(exp_name)"
-
-# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# # EXPERIMENT NAME
-# T = 50000
-# exp_name = "quadWell2D_anisotropicI_HLM_50K"
-
-# save_dir = "$(master_dir)/$(exp_name)"
-
-# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# # EXPERIMENT NAME
-# T = 500000
-# exp_name = "quadWell2D_anisotropicI_HLM_500K"
-
-# save_dir = "$(master_dir)/$(exp_name)"
-
-# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+stepsizes = 10 .^ range(-2.0, -0.1, length=number_of_stepsizes)
 
 # EXPERIMENT NAME
-T = 10000000
-exp_name = "quadWell2D_anisotropicI_HLM_10M"
+exp_name = "quadWell2D_isotropic_HLM_500_test"
 
 save_dir = "$(master_dir)/$(exp_name)"
 

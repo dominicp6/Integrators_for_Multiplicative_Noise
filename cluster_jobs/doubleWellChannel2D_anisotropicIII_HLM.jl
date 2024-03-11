@@ -47,35 +47,35 @@ number_of_stepsizes = 20
 stepsizes = 10 .^ range(-3.0, -1.0, length=number_of_stepsizes)
 
 # EXPERIMENT NAME
-exp_name = "doubleWellChannel2D_anisotropicIII_HLM_500"
+# exp_name = "doubleWellChannel2D_anisotropicIII_HLM_500"
 
-save_dir = "$(master_dir)/$(exp_name)"
+# save_dir = "$(master_dir)/$(exp_name)"
 
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
-# EXPERIMENT NAME
-T = 5000
-exp_name = "doubleWellChannel2D_anisotropicIII_HLM_5K"
+# # EXPERIMENT NAME
+# T = 5000
+# exp_name = "doubleWellChannel2D_anisotropicIII_HLM_5K"
 
-save_dir = "$(master_dir)/$(exp_name)"
+# save_dir = "$(master_dir)/$(exp_name)"
 
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
-# EXPERIMENT NAME
-T = 50000
-exp_name = "doubleWellChannel2D_anisotropicIII_HLM_50K"
+# # EXPERIMENT NAME
+# T = 50000
+# exp_name = "doubleWellChannel2D_anisotropicIII_HLM_50K"
 
-save_dir = "$(master_dir)/$(exp_name)"
+# save_dir = "$(master_dir)/$(exp_name)"
 
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
-# EXPERIMENT NAME
-T = 500000
-exp_name = "doubleWellChannel2D_anisotropicIII_HLM_500K"
+# # EXPERIMENT NAME
+# T = 500000
+# exp_name = "doubleWellChannel2D_anisotropicIII_HLM_500K"
 
-save_dir = "$(master_dir)/$(exp_name)"
+# save_dir = "$(master_dir)/$(exp_name)"
 
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
 # EXPERIMENT NAME
 T = 5000000

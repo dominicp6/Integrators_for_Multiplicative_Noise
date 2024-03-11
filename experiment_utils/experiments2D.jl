@@ -11,7 +11,7 @@ using HCubature, QuadGK, FHist, JLD2, Statistics, .Threads, ProgressBars, JSON, 
 import .Calculus: differentiate2D, symbolic_matrix_divergence2D
 import .ProbabilityUtils: compute_2D_mean_L1_error, compute_2D_invariant_distribution
 import .PlottingUtils: save_and_plot, plot_histograms
-import .MiscUtils: init_x0, create_directory_if_not_exists
+import .MiscUtils: init_x0, create_directory_if_not_exists, find_row_indices, remove_rows
 
 """
 Creates necessary directories and save experiment parameters for the 2D experiment.
@@ -100,32 +100,36 @@ function run_2D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
 
         # Run the simulation for each specified step size
         for (stepsize_idx, dt) in enumerate(stepsizes)
+            try
+                steps_remaining = floor(T / dt)                 
+                total_samples = Int(steps_remaining)                                  
 
-            steps_remaining = floor(T / dt)                 
-            total_samples = Int(steps_remaining)                                  
+                # Create a zeros array of the correct size for the histogram
+                num_x_bins = length(x_bins) - 1
+                num_y_bins = length(y_bins) - 1
+                zeros_array = zeros(Int64, num_x_bins, num_y_bins)
 
-            # Create a zeros array of the correct size for the histogram
-            num_x_bins = length(x_bins) - 1
-            num_y_bins = length(y_bins) - 1
-            zeros_array = zeros(Int64, num_x_bins, num_y_bins)
+                hist = Hist2D(zeros_array, (x_bins, y_bins))                 # histogram of the trajectory
 
-            hist = Hist2D(zeros_array, (x_bins, y_bins))                 # histogram of the trajectory
+                while steps_remaining > 0
+                    # Run steps in chunks to minimise memory footprint
+                    steps_to_run = convert(Int, min(steps_remaining, chunk_size))
+                    x_chunk, _ = integrator(x0, Vprime, D, div_DDT, sigma, steps_to_run, dt, nothing, noise_integrator, nothing)
+                    hist += Hist2D((x_chunk[1,:], x_chunk[2,:]), (x_bins, y_bins))
+                    steps_remaining -= steps_to_run
+                end
 
-            while steps_remaining > 0
-                # Run steps in chunks to minimise memory footprint
-                steps_to_run = convert(Int, min(steps_remaining, chunk_size))
-                x_chunk, _ = integrator(x0, Vprime, D, div_DDT, sigma, steps_to_run, dt, nothing, noise_integrator, nothing)
-                hist += Hist2D((x_chunk[1,:], x_chunk[2,:]), (x_bins, y_bins))
-                steps_remaining -= steps_to_run
-            end
+                convergence_errors[stepsize_idx, repeat] = compute_2D_mean_L1_error(hist, probabilities, total_samples)
 
-            convergence_errors[stepsize_idx, repeat] = compute_2D_mean_L1_error(hist, probabilities, total_samples)
+                histogram_data[stepsize_idx, repeat] = hist
 
-            histogram_data[stepsize_idx, repeat] = hist
-
-            if checkpoint
-                # Save the histogram
-                save("$(save_dir)/checkpoints/$(string(nameof(integrator)))/h=$dt/$(repeat).jld2", "data", hist)
+                if checkpoint
+                    # Save the histogram
+                    save("$(save_dir)/checkpoints/$(string(nameof(integrator)))/h=$dt/$(repeat).jld2", "data", hist)
+                end
+            catch
+                println("Experiment with stepsize ", dt, " failed in repeat ", repeat)
+                convergence_errors[stepsize_idx, repeat] = -1
             end
         end
     end

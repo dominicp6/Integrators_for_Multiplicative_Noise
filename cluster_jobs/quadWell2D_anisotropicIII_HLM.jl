@@ -46,40 +46,40 @@ integrators = [hummer_leimkuhler_matthews2D]
 number_of_stepsizes = 20
 stepsizes = 10 .^ range(-2.0, -0.1, length=number_of_stepsizes)
 
+# # EXPERIMENT NAME
+# exp_name = "quadWell2D_anisotropicIII_HLM_500"
+
+# save_dir = "$(master_dir)/$(exp_name)"
+
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+
+# # EXPERIMENT NAME
+# T = 5000
+# exp_name = "quadWell2D_anisotropicIII_HLM_5K"
+
+# save_dir = "$(master_dir)/$(exp_name)"
+
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+
+# # EXPERIMENT NAME
+# T = 50000
+# exp_name = "quadWell2D_anisotropicIII_HLM_50K"
+
+# save_dir = "$(master_dir)/$(exp_name)"
+
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+
+# # EXPERIMENT NAME
+# T = 500000
+# exp_name = "quadWell2D_anisotropicIII_HLM_500K"
+
+# save_dir = "$(master_dir)/$(exp_name)"
+
+# master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
+
 # EXPERIMENT NAME
-exp_name = "quadWell2D_anisotropicIII_HLM_500"
-
-save_dir = "$(master_dir)/$(exp_name)"
-
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# EXPERIMENT NAME
-T = 5000
-exp_name = "quadWell2D_anisotropicIII_HLM_5K"
-
-save_dir = "$(master_dir)/$(exp_name)"
-
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# EXPERIMENT NAME
-T = 50000
-exp_name = "quadWell2D_anisotropicIII_HLM_50K"
-
-save_dir = "$(master_dir)/$(exp_name)"
-
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# EXPERIMENT NAME
-T = 500000
-exp_name = "quadWell2D_anisotropicIII_HLM_500K"
-
-save_dir = "$(master_dir)/$(exp_name)"
-
-master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
-
-# EXPERIMENT NAME
-T = 5000000
-exp_name = "quadWell2D_anisotropicIII_HLM_5M"
+T = 10000000
+exp_name = "quadWell2D_anisotropicIII_HLM_10M"
 
 save_dir = "$(master_dir)/$(exp_name)"
 

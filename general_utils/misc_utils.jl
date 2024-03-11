@@ -1,5 +1,5 @@
 module MiscUtils
-export init_x0, assert_isotropic_diagonal_diffusion, is_identity_diffusion, create_directory_if_not_exists
+export init_x0, assert_isotropic_diagonal_diffusion, is_identity_diffusion, create_directory_if_not_exists, find_row_indices, remove_rows
 
 function init_x0(x0; dim::Int = 1) 
     if x0 === nothing
@@ -38,6 +38,37 @@ function create_directory_if_not_exists(dir_path)
         mkpath(dir_path)
         @info "Created directory $dir_path"
     end
+end
+
+
+"""
+Finds the row indices in an array/matrix where any element in that row is a 'nothing' type
+"""
+function find_row_indices(arr::Matrix, value::Int)
+    indices = Int[]
+    for i in 1:size(arr, 1)
+        if any(x -> x === value, arr[i, :])
+            push!(indices, i)
+        end
+    end
+    return indices
+end
+
+"""
+Removes rows in place in a matrix based on row indices to remove, returns the trimmed matrix
+"""
+function remove_rows(matrix::Matrix, indices::Vector{Int})
+    # Sort the indices in descending order
+    sorted_indices = sort(indices, rev=true)
+    
+    # Remove rows from the matrix
+    for i in sorted_indices
+        if i > size(matrix, 1) || i < 1
+            error("Index out of range")
+        end
+        matrix = vcat(matrix[1:i-1, :], matrix[i+1:end, :])
+    end
+    return matrix
 end
 
 end # module MiscUtils
