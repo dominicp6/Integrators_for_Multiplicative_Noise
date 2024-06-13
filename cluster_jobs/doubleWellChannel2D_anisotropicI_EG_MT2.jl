@@ -8,8 +8,8 @@ include("../experiment_utils/experiments2D.jl")
 include("../general_utils/calculus.jl")
 
 import .Integrators: eugen_gilles1D, euler_maruyama1D, hummer_leimkuhler_matthews1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, limit_method_with_variable_diffusion1D, euler_maruyama2D, eugen_gilles2D, limit_method_with_variable_diffusion_RK6_1D
-import .Potentials: softWell1D, q4Potential, softQuadrupleWell2D, q4Potential2D, q2Potential, doubleWellChannel2D
-import .DiffusionTensors: Dconst1D, Dabs1D, Dquadratic1D, Dcosperturb1D, Dconst2D, Dcosperturb2D, Dsinperturb1D, DmoroCardin, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIII
+import .Potentials: softWell1D, q4Potential, softQuadrupleWell2D, q4Potential2D, q2Potential, doubleWellChannel2D, q1Soft2D
+import .DiffusionTensors: Dconst1D, Dabs1D, Dquadratic1D, Dcosperturb1D, Dconst2D, Dcosperturb2D, Dsinperturb1D, DmoroCardin, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIII, DanisotropicV
 import .ProbabilityUtils: compute_1D_invariant_distribution
 import .Experiments: master_1D_experiment, run_1D_experiment_until_given_error
 import .Experiments2D: master_2D_experiment
@@ -34,8 +34,8 @@ bin_boundaries = range(xmin, stop=xmax, length=n_bins+1)
 chunk_size = 100000;
 
 # POTENTIAL AND DIFFUSION
-potential = doubleWellChannel2D
-diffusion = DanisotropicI
+potential = q1Soft2D
+diffusion = DanisotropicV
 
 # INTEGRATOR
 noise_integrator = MT2_2D
@@ -43,7 +43,7 @@ n = nothing
 integrators = [eugen_gilles2D]
 
 # STEPSIZES
-number_of_stepsizes = 20
+number_of_stepsizes = 10
 stepsizes = 10 .^ range(-3.0, -1.0, length=number_of_stepsizes)
 
 

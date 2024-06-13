@@ -1,6 +1,6 @@
 module Potentials
 using Symbolics
-export bowl2D, doubleWell1D, quadrupleWell2D, moroCardin2D, muller_brown, LM2013, localWell1D, transformedLocalWell1D, transformedLM2013, transformed2LM2013, softWell1D, transformedSoftWell1D, transformed2SoftWell1D, softQuadrupleWell2D, q4Potential2D, doubleWellChannel2D
+export bowl2D, doubleWell1D, quadrupleWell2D, moroCardin2D, muller_brown, LM2013, localWell1D, transformedLocalWell1D, transformedLM2013, transformed2LM2013, softWell1D, transformedSoftWell1D, transformed2SoftWell1D, softQuadrupleWell2D, q4Potential2D, doubleWellChannel2D, q1Soft2D
 
 function bowl2D(q::AbstractVector{T}) where T<:Real
     # 2D bowl potential
@@ -21,6 +21,10 @@ end
 function q2Potential2D(x::T, y::T) where T<:Real
     # 2D quadratic potential
     return x^2 / 2 + y^2 / 2
+end
+
+function q1Soft2D(x::T, y::T) where T<:Real
+    return sqrt((x^2 + y^2) * (4/5))
 end
 
 function q4Potential2D(x::T, y::T) where T<:Real
