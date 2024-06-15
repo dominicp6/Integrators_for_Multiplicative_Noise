@@ -31,7 +31,7 @@ n_bins = 30
 
 bin_boundaries = range(xmin, stop=xmax, length=n_bins+1)
 
-chunk_size = 100000;
+chunk_size = 10000;
 
 # POTENTIAL AND DIFFUSION
 potential = softQuadrupleWell2D

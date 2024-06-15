@@ -450,7 +450,7 @@ function euler_maruyama2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt:
 end
 
 
-function leimkuhler_matthews2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing)
+function leimkuhler_matthews2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
     # set up
     t = 0.0

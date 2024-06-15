@@ -78,8 +78,8 @@ stepsizes = 10 .^ range(-2.0, -0.1, length=number_of_stepsizes)
 # master_2D_experiment(integrators, num_repeats, potential, diffusion, T, sigma, stepsizes, xmin, ymin, xmax, ymax, n_bins, save_dir; chunk_size=chunk_size, x0=nothing, noise_integrator=noise_integrator, n=n)
 
 # EXPERIMENT NAME
-T = 10000000
-exp_name = "quadWell2D_anisotropicIII_EG_W2Ito_10M"
+T = 5000000
+exp_name = "quadWell2D_anisotropicIII_EG_W2Ito_5M"
 
 save_dir = "$(master_dir)/$(exp_name)"
 
