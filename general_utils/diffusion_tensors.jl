@@ -1,6 +1,6 @@
 module DiffusionTensors
 using LinearAlgebra
-export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIII, DanisotropicIV, DanisotropicV
+export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIIreversed, DanisotropicIII, DanisotropicIV, DanisotropicV, Dradial, Dannulus
 
 # This script defines preset diffusion tensors to test the code
 
@@ -48,12 +48,25 @@ function DmoroCardin(x::T, y::T) where T<:Real
     return (1.0 + 5.0 * exp(- (x^2 + y^2) / (2 * 0.3^2)))^(-1) * Matrix{Float64}(I, 2, 2)
 end
 
+function Dradial(x::T, y::T) where T<:Real
+    return [0.01 + 0.5 * x^2 0.5 * x*y; 0.5 * x*y 0.01 + 0.5 * y^2]
+end
+
+function Dannulus(x::T, y::T) where T<:Real
+    return [0.01 + 0.5 * y^2 -0.5 * x*y; -0.5 * x*y 0.01 + 0.5 * x^2]
+end
+
 function DanisotropicI(x::T, y::T) where T<:Real
     return [1.0 0; 0 1.5]
 end
 
 function DanisotropicII(x::T, y::T) where T<:Real
     theta = atan(y, x)
+    return [1-sin(theta)^2 / 2 cos(theta) * sin(theta) / 2; cos(theta) * sin(theta)/2 1 - cos(theta)^2 / 2]
+end
+
+function DanisotropicIIreversed(x::T, y::T) where T<:Real
+    theta = atan(y, x) - π/2
     return [1-sin(theta)^2 / 2 cos(theta) * sin(theta) / 2; cos(theta) * sin(theta)/2 1 - cos(theta)^2 / 2]
 end
 
