@@ -109,13 +109,13 @@ function run_2D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
                 num_y_bins = length(y_bins) - 1
                 zeros_array = zeros(Int64, num_x_bins, num_y_bins)
 
-                hist = Hist2D(zeros_array, (x_bins, y_bins))                 # histogram of the trajectory
+                hist = Hist2D(zeros_array, binedges = (x_bins, y_bins))                 # histogram of the trajectory
 
                 while steps_remaining > 0
                     # Run steps in chunks to minimise memory footprint
                     steps_to_run = convert(Int, min(steps_remaining, chunk_size))
                     x_chunk, _ = integrator(x0, Vprime, D, div_DDT, sigma, steps_to_run, dt, nothing, noise_integrator, nothing)
-                    hist += Hist2D((x_chunk[1,:], x_chunk[2,:]), (x_bins, y_bins))
+                    hist += Hist2D((x_chunk[1,:], x_chunk[2,:]), binedges = (x_bins, y_bins))
                     steps_remaining -= steps_to_run
                 end
 

@@ -70,7 +70,7 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
             stepsize_idx = length(stepsizes) - stepsize_reverse_idx + 1
             steps_remaining = floor(Int, T / dt)                
             total_samples = Int(steps_remaining)                               
-            hist = Hist1D([], bin_boundaries)  
+            hist = Hist1D([], binedges = bin_boundaries)  
             obs = 0.0          
 
             while steps_remaining > 0
@@ -80,7 +80,7 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
                 # Run a chunk of the simulation
                 q_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, steps_to_run, dt, nothing, noise_integrator, n)
                 q0 = copy(q_chunk[end])
-                hist += Hist1D(q_chunk, bin_boundaries)
+                hist += Hist1D(q_chunk, binedges = bin_boundaries)
                 if observable !== nothing
                     obs = ((total_samples - steps_remaining) * obs + sum(observable(q) for q in q_chunk)) / (total_samples - steps_remaining + steps_to_run)
                 end
@@ -168,13 +168,13 @@ function run_1D_experiment_until_given_error(integrator, num_repeats, V, D, sigm
             steps_ran = 0                                    
             chunk_number = 0                                 
             error = Inf                                    
-            hist = Hist1D([], bin_boundaries)                 
+            hist = Hist1D([], binedges = bin_boundaries)                 
 
             while error > target_error
                 # Run a chunk of the simulation
                 x_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, chunk_size, dt, nothing, noise_integrator, n)
                 x0 = copy(x_chunk[end])
-                hist += Hist1D(x_chunk, bin_boundaries)
+                hist += Hist1D(x_chunk, binedges = bin_boundaries)
                 steps_ran += chunk_size
                 
                 error = compute_1D_mean_L1_error(hist, probabilities, steps_ran)

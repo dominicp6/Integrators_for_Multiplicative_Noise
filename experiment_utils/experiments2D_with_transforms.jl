@@ -90,7 +90,7 @@ function run_chunk2D(integrator, q0, Vprime, D, div_DDT, sigma::Number, dt::Numb
     q0 = copy(q_chunk[:, end])  
 
     # Update the number of steps left to run
-    hist += Hist2D((q_chunk[1,:], q_chunk[2,:]), (x_bins, y_bins))
+    hist += Hist2D((q_chunk[1,:], q_chunk[2,:]), binedges = (x_bins, y_bins))
     chunk_number += 1
 
     return q0, hist, chunk_number, ΣgI, Σg
@@ -169,7 +169,7 @@ function run_2D_experiment(integrator, num_repeats, V, D, T, R, sigma, stepsizes
             ΣgI = zeros(Int64, num_x_bins, num_y_bins)     
             Σg = 0.0  
 
-            hist = Hist2D(zeros_array, (x_bins, y_bins))                 # histogram of the trajectory
+            hist = Hist2D(zeros_array, binedges = (x_bins, y_bins))                 # histogram of the trajectory
 
             while steps_remaining > 0
                 # Run steps in chunks to minimise memory footprint
