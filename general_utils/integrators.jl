@@ -210,6 +210,50 @@ function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::In
     return x_traj, nothing
 end
 
+function W2Ito_full1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+
+    # set up
+    x = copy(x0)
+    x_traj = zeros(m)
+
+    F = x -> -(D(x)^2) * Vprime(x) + sigma^2 * D2prime(x) / 2
+    sqrt_dt = sqrt(dt)
+    coeff1 = (6 - sqrt(6)) / 10
+    coeff2 = (3 + 2*sqrt(6)) / 5
+
+    # simulate
+    for i in 1:m
+        Rₖ = rand()
+        χ1 = rand([-1, 1])
+        J = χ1 * (Rₖ^2  - 1) / 2
+
+        F_x = F(x)
+        D_x = D(x)
+
+        K01 = x + dt/2 * F_x + sqrt_dt * coeff1 * D_x * Rₖ
+
+        F_K01 = F(K01)
+
+        K02 = x - dt * F_x + 2*dt * F_K01 + sqrt_dt * coeff2 * D_x * Rₖ
+
+        F_K02 = F(K02)
+
+        K11 = x + dt/4 * F_x0 + sqrt_dt/2 * D_x * χ1
+        K12 = x + dt/4 * F_x0 - sqrt_dt/2 * D_x * χ1
+
+        D_K11 = D(K11)
+        D_K12 = D(K12)
+
+        x += dt/6 * F_x + 2*dt/3 * F_K01 + dt/6 * F_K02
+        x += sqrt_dt * (- D_x + D_K11 + D_K12) * Rₖ + 2 * sqrt_dt * (D_x - D_K12) * J
+
+        x_traj[i] = x
+    end
+
+    return x_traj, nothing
+
+end
+
 function eugen_gilles2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     D² = (x, y) -> D(x, y)^2
     F = (x, y) -> D²(x, y) * (-Vprime(x, y)) + sigma^2 * div_DDT(x, y) /2
