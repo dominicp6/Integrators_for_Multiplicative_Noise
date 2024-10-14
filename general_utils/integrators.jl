@@ -14,7 +14,7 @@ function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
     x_traj = zeros(m)
     sqrt_dt = sqrt(dt)
 
-    # simulate
+    # sismulate
     for i in 1:m
         # compute the drift and diffusion coefficients
         D_x = D(x)
