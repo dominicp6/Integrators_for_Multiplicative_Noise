@@ -41,7 +41,7 @@ Run a 1D finite-time experiment using the specified integrator and parameters.
 This function runs a 1D finite-time experiment with the specified integrator and system parameters. 
 The experiment is repeated `num_repeats` times, each time with different initial conditions. For each combination of step size and repeat, the weak error w.r.t. the invariant distribution is computed.
 """
-function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, noise_integrator=nothing, n=nothing, observable=nothing, expected_observable=nothing)
+function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, noise_integrator=nothing, n=nothing, observable=nothing, expected_observable=nothing, max_retries=3)
     
     # Make master directory
     make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, bin_boundaries, chunk_size, T)
@@ -70,30 +70,74 @@ function run_1D_experiment(integrator, num_repeats, V, D, T, sigma, stepsizes, p
             stepsize_idx = length(stepsizes) - stepsize_reverse_idx + 1
             steps_remaining = floor(Int, T / dt)                
             total_samples = Int(steps_remaining)                               
-            hist = Hist1D([], binedges = bin_boundaries)  
+            hist = Hist1D([], binedges=bin_boundaries)  
             obs = 0.0          
 
-            while steps_remaining > 0
-                # Run steps in chunks to minimise memory footprint
-                steps_to_run = convert(Int, min(steps_remaining, chunk_size))
-                
-                # Run a chunk of the simulation
-                q_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, steps_to_run, dt, nothing, noise_integrator, n)
-                q0 = copy(q_chunk[end])
-                hist += Hist1D(q_chunk, binedges = bin_boundaries)
+            steps_done = 0
+            retry_count = 0
+            x_start = deepcopy(x0)
+            while retry_count < max_retries
+                try
+                    while steps_remaining > 0
+                        # Run steps in chunks to minimise memory footprint
+                        steps_to_run = convert(Int, min(steps_remaining, chunk_size))
+                        
+                        x_start = deepcopy(x0)
+                        # Run a chunk of the simulation
+                        q_chunk, _ = integrator(x0, Vprime, D, D2prime, sigma, steps_to_run, dt, nothing, noise_integrator, n)
+                        x0 = copy(q_chunk[end])
+                        hist += Hist1D(q_chunk, binedges=bin_boundaries)
+                        if observable !== nothing
+                            obs = ((total_samples - steps_remaining) * obs + sum(observable(q) for q in q_chunk)) / (total_samples - steps_remaining + steps_to_run)
+                        end
+                        
+                        steps_remaining -= steps_to_run
+                        steps_done += steps_to_run
+
+                        retry_count = 0
+                        if repeat == 1
+                            # Read the JSON file
+                            file_path = "$(save_dir)/progress.json"
+                            json_data = JSON.parsefile(file_path)
+                            json_data[string(nameof(integrator))][string(dt)] = steps_done / total_samples
+                            
+                            # Write the modified data back to the JSON file
+                            open(file_path, "w") do io
+                                JSON.print(io, json_data, 4)
+                            end
+                        end
+                    end
+
+                # Compute the convergence error
+                convergence_errors[stepsize_idx, repeat] = compute_1D_mean_L1_error(hist, probabilities, total_samples)
                 if observable !== nothing
-                    obs = ((total_samples - steps_remaining) * obs + sum(observable(q) for q in q_chunk)) / (total_samples - steps_remaining + steps_to_run)
+                    observable_errors[stepsize_idx, repeat] = abs(obs - expected_observable)
                 end
-                
-                steps_remaining -= steps_to_run
-            end
+                delay = repeat / num_repeats
+                sleep(delay)
+                errors_path = "$(save_dir)/partial_results.txt"
+                open(errors_path, "a") do io
+                    message = string(string(nameof(integrator)), ", ", dt, ", ", repeat, ", ", convergence_errors[stepsize_idx, repeat], "\n")
+                    write(io, message)
+                end
 
-            # Compute the convergence error
-            convergence_errors[stepsize_idx, repeat] = compute_1D_mean_L1_error(hist, probabilities, total_samples)
-            if observable !== nothing
-                observable_errors[stepsize_idx, repeat] = abs(obs - expected_observable)
+                break
+            catch
+                retry_count += 1
+                if retry_count >= max_retries
+                    errors_path = "$(save_dir)/errors.txt"
+                    open(errors_path, "a") do io
+                        message = string("Experiment with ", string(nameof(integrator)), " stepsize ", dt, " failed in repeat ", repeat, "\n")
+                        write(io, message)
+                    end
+                    convergence_errors[stepsize_idx, repeat] = -1
+                    break
+                else
+                    # Reset state to the start of the previous batch
+                    x0 = deepcopy(x_start)
+                end
             end
-
+        end
         end
     end
 
