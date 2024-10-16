@@ -1,5 +1,6 @@
 module MiscUtils
 export init_x0, assert_isotropic_diagonal_diffusion, is_identity_diffusion, create_directory_if_not_exists, find_row_indices, remove_rows
+using LinearAlgebra
 
 function init_x0(x0; dim::Int = 1) 
     if x0 === nothing
