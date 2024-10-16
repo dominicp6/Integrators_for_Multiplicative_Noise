@@ -4,7 +4,7 @@ include("integrator_utils.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D, differentiate1D
 using .IntegratorUtils: EM_noise_1D
-export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D, strang_splitting_with_EM1D
+export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D, strang_splitting_with_EM1D, W2Ito_full1D
 
 function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
@@ -170,6 +170,52 @@ function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, d
     return x_traj, nothing
 end
 
+function strang_splitting2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+    D² = (x, y) -> D(x, y)^2
+    F = (x, y) -> D²(x, y) * (-Vprime(x, y)) + sigma^2 * div_DDT(x, y) /2
+
+    # Define first and second columns of the matrix function D
+    D_1 = (x, y) -> D(x, y)[:,1]
+    D_2 = (x, y) -> D(x, y)[:,2]
+
+    # set up
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(2, m)
+    
+    # simulate
+    for i in 1:m
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * F(x[1], x[1])
+        k2 = (dt / 2) * F(x[1] + 0.5 * k1[1], x[2] + 0.5 * k1[2])
+        k3 = (dt / 2) * F(x[1] + 0.5 * k2[1], x[2] + 0.5 * k2[2])
+        k4 = (dt / 2) * F(x[1] + k3[1], x[2] + k3[2]) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
+
+        Rₖ = randn(2)
+
+        x += noise_integrator(x, dt, D, D_1, D_2, Rₖ)
+
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * F(x[1], x[1])
+        k2 = (dt / 2) * F(x[1] + 0.5 * k1[1], x[2] + 0.5 * k1[2])
+        k3 = (dt / 2) * F(x[1] + 0.5 * k2[1], x[2] + 0.5 * k2[2])
+        k4 = (dt / 2) * F(x[1] + k3[1], x[2] + k3[2]) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
+
+        x_traj[:,i] .= x
+
+        # update the time
+        t += dt
+    end
+
+    return x_traj, nothing
+end
+
 function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
 
     # set up
@@ -238,8 +284,8 @@ function W2Ito_full1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Num
 
         F_K02 = F(K02)
 
-        K11 = x + dt/4 * F_x0 + sqrt_dt/2 * D_x * χ1
-        K12 = x + dt/4 * F_x0 - sqrt_dt/2 * D_x * χ1
+        K11 = x + dt/4 * F_x + sqrt_dt/2 * D_x * χ1
+        K12 = x + dt/4 * F_x - sqrt_dt/2 * D_x * χ1
 
         D_K11 = D(K11)
         D_K12 = D(K12)
@@ -516,6 +562,41 @@ function leimkuhler_matthews2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer
         drift = -DDT_x * grad_V + (sigma^2)/2 * div_DDT_x 
         Rₖ₊₁ = randn(n)
         diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
+        
+        # update the configuration
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
+        
+        # update the time
+        t += dt
+
+        # update the noise increment
+        Rₖ = copy(Rₖ₊₁)      
+    end 
+    
+    return x_traj, Rₖ
+end
+
+
+function leimkuhler_matthews2D_identityD(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+    
+    # set up
+    t = 0.0
+    x = copy(x0)
+    n = 2
+    x_traj = zeros(n, m)
+    if Rₖ === nothing
+        Rₖ = randn(n)
+    end
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        # compute the drift and diffusion coefficients
+        grad_V = Vprime(x[1], x[2])
+        drift = -grad_V
+        Rₖ₊₁ = randn(n)
+        diffusion = sigma * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
         x += drift * dt + diffusion * sqrt_dt
