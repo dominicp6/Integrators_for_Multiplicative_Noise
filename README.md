@@ -1,15 +1,34 @@
-[![DOI](https://zenodo.org/badge/616585156.svg)](https://zenodo.org/badge/latestdoi/616585156)
+# Integrators for Multiplicative Noise
 
-# Transforms-For-Brownian-Dynamics
+*Brownian dynamics integrators for multiplicative noise, implemented in Julia.*
 
-*Brownian dynamics integrators with coordinate transforms to constant diffusion, implemented in Julia.*
+This codebase was developed for the paper "Efficient Langevin sampling with position-dependent diffusion" - Read the paper [here](https://arxiv.org/abs/2501.02943). 
+This codebase is also an extension of [this repo](https://github.com/dominicp6/Transforms-For-Brownian-Dynamics), which was developed for the paper "Numerical Methods with Coordinate Transforms for Efficient Brownian Dynamics Simulations" - Read the paper [here](https://arxiv.org/abs/2307.02913).
 
-This codebase was developed for the paper "Numerical Methods with Coordinate Transforms for Efficient Brownian Dynamics Simulations", which can be found [here](https://arxiv.org/abs/2307.02913).
+If you use this work, please use the following citations:
+
+@article{bronasco2025efficient,
+  title={Efficient Langevin sampling with position-dependent diffusion},
+  author={Bronasco, Eugen and Leimkuhler, Benedict and Phillips, Dominic and Vilmart, Gilles},
+  journal={arXiv preprint arXiv:2501.02943},
+  year={2025}
+}
+
+@article{phillips2025numerics,
+  title={Numerics with coordinate transforms for efficient Brownian dynamics simulations},
+  author={Phillips, Dominic and Leimkuhler, Benedict and Matthews, Charles},
+  journal={Molecular Physics},
+  volume={123},
+  number={7-8},
+  pages={e2347546},
+  year={2025},
+  publisher={Taylor \& Francis}
+}
 
 ## Motivation
-Numerical integrators of Stochastic Differential Equations (SDEs) work well for constant (additive) noise but often lose performance, or fail to converge, for variable (multiplicative) noise. One solution, if and when it is possible, is to apply reversible transforms in space or time to convert a variable noise process into a constant noise process, which can be more efficiently sampled with traditional SDE integrators. Then, trajectories can be reweighted and the statistical and dynamical properties of the original process can be reconstructed. 
-
-**Brownian dynamics** is one of the most important classes of SDE process, with applications across the physical, biological, and data-driven sciences. This codebase provides a Julia toolbox for running high-efficiency simulations of Brownian dynamics processes with coordinate transforms.
+Numerical integrators of Stochastic Differential Equations (SDEs) work well for constant (additive) noise but often lose performance, or fail to converge, for variable (multiplicative) noise. 
+**Brownian dynamics** is one of the most important classes of SDE processes, with applications across the physical, biological, and data-driven sciences. 
+We develop a new, second-order integrator for the invariant measure for Brownian dynamics with multiplicative noise. The codebase includes implementations of other common integrators for comparison.
 
 ## Installation
 
@@ -36,20 +55,6 @@ The code has only been tested with the version numbers provided. If you are expe
 
 Done!
 
-## Usage
-
-The `example_scripts` folder contains prepared experiment scripts to get you started. The easiest way to start is to run these files in Julia and edit and extend them as per your requirements. Here's what a few of these scripts do:
-- `example_scripts/1D_experiment.jl` for running Brownian dynamics simulations with or without transformations in one-dimension
-- `example_scripts/2D_experiment.jl` for running Brownian dynamics simulations with or without transformations in two-dimensions
-- `example_scripts/computational_efficiency_experiments.jl` for comparing the computational efficiency (minimum compute time required to reach a target error in the invariant measure) of various integrator/transform combinations
-- `example_scripts/finite_time_experiment.jl` for computing the finite time error in the evolving distribution for various integrator/transform combinations
-
-The main functions for running experiments can be found in `experiment_utils`. Unless you want to extend the functionality of this package, it is unlikely that you will need to modify anything in this folder.
-
-You can add your own custom integrators in `general_utils/integrators.jl`, your own custom diffusion tensors in `general_utils\diffusion_tensors.jl`, and your own potential functions in `general_utils\potentials.jl`. We recommend that you keep the other files in this folder unchanged.
-
-By default, outputs of the experiment runs are stored in the `outputs` folder. If you want to re-run an experiment with the same name, remember to delete the old experiment folder first or this will cause problems when saving results.
-
 ## Contributing
 
 We welcome contributions! If you'd like to contribute to this project, please follow these steps:
@@ -59,9 +64,6 @@ We welcome contributions! If you'd like to contribute to this project, please fo
 3. Make your changes and commit them.
 4. Push your changes to your fork.
 5. Submit a pull request to the main repository.
-
-## Background Theory
-What follows is an introduction. See the [paper](https://arxiv.org/abs/2307.02913) for all technical details.
 
 ### Brownian Dynamics
 Brownian dynamics is defined through an Ito stochastic differential equation (SDE), which in one dimension reads
@@ -88,62 +90,31 @@ $$
 
 for reasonably well-behaved functions $`f: \mathbb{R}^n \rightarrow \mathbb{R}`$.
 
-### Transforms
-#### Lamperti Transform (Global Coordinate Transform)
+### Second-Order Post-Processor Method For Variable Diffusion
 
-Consider multivariate Brownian dynamics with $`\mathbf{D}`$ matrix
-
-$$
-  \mathbf{D}(\mathbf{X})_{ij} = D_i  (X_i) R _{ij},
-$$
-
-where $`R_{ij}`$ in an invertible, constant matrix. For this class of diffusion,  a Lamperti transform to unit diffusion can be constructed, however, the transformed dynamics is only Brownian dynamics with a conservative drift force if $`\mathbf{R}`$ is proportional to the identity. Specifically, when $`\mathbf{D}(\mathbf{X})_{ij} = D_i(X_i)\delta_{ij}`$, the Lamperti-transformed process is $`Y_{i,t} = \sqrt{2kT} \int_{x_0}^{X_{i,t}} \frac{1}{D_i(x)} dx := \sqrt{2kT} \phi_i(X_{i,t})`$, and obeys
+**Definition (PVD-2):** The Second-Order Post-processed method for Variable Diffusion (PVD-2) is an integrator for Brownian dynamics. It is defined as:
 
 $$
-  dY_{i,t} = -\nabla_{Y_i} \hat{V}({\mathbf{Y}})dt + \sqrt{2kT}dW_i,
+X_{n+1} = X_n + hF(Y_n) + \hat\Phi^\Sigma_h \left(X_n + \frac{1}{4} h F(Y_{n-1}); \xi_n\right),
 $$
 
-with an effective potential 
-
 $$
-    \hat{V}(\mathbf{Y}) = V(\phi^{-1}(\mathbf{Y})) - kT \sum_{k=1}^n \ln D_k (\phi^{-1}_k (Y _{k,t})).
+Y_n = X_n + \frac{1}{2} \sqrt{h} \sigma \Sigma(X_n) \xi_n, \quad \text{with } Y_{-1} = X_0,
 $$
 
-Phase-space averages with respect to the invariant measure, $`\rho(\mathbf{X})`$, of the original process can be recovered through
+where $\xi_n \sim \mathcal{N}(0, I_d)$ are independent standard Gaussian vectors, $F = -(\Sigma^\top \Sigma)\nabla V + \frac{2}{\sigma^2} \nabla \cdot (\Sigma^\top \Sigma)$ is the drift term, and $\Phi_h^\Sigma(X_n; \xi_n) = X_n + \hat{\Phi}_h^\Sigma(X_n; \xi_n)$ is any one-step integrator of weak order 2, applied to the pure-noise system:
 
 $$
-\int_{\mathbb{R}^n} f(\mathbf{X})\rho(\mathbf{X}) d\mathbf{X} = \lim_{T \rightarrow \infty} \frac{1}{T} \int_{t=0}^T f(\phi^{-1}(\mathbf{Y}_t)) dt.
+dX = \sigma \Sigma(X) \, dW.
 $$
 
-In the above, the map $`\phi^{-1}: \mathbb{R}^n \rightarrow \mathbb{R}`$ is constructed by individually applying $`\phi_i^{-1}`$ to each component of its argument, $`1 \leq i \leq n`$.
-
-#### Time-Rescaling Transform
-
-Consider multivariate Brownian dynamics with $\mathbf{D}$ matrix
+**Theorem:** Under smoothness and ergodicity assumptions, the PVD-2 scheme achieves **second-order accuracy** for the invariant measure. For any smooth test function $\phi$:
 
 $$
-\mathbf{D}(\mathbf{X}) = D(\mathbf{X})\mathbf{R},
+\left| \lim_{N\rightarrow +\infty} \mathrm{a.s.}
+\frac{1}{N+1} \sum^N_{n=0} \phi(Y_n) - \int_{\mathbb{R}^d} \phi(x) \, d\pi(x) \right| \leq Ch^2
 $$
 
-where $`\mathbf{R}`$ is an invertible matrix. For this class of variable diffusion, a time-rescaling to Brownian dynamics unit diffusion can be constructed. The time-rescaled process is given by $`\mathbf{Y}_\tau = \mathbf{R}^{-1}\mathbf{X}_\tau`$  where $`\frac{dt}{d\tau} = g(\mathbf{X}) := 1/D^2(\mathbf{X})`$ and it obeys
+**Proof Sketch:** Proving this theorem directly is exceptionally difficult due to the complexity of the integrator's error expansion. The proof relies on the modern algebraic framework of **exotic aromatic B-series**. This technique translates complex differential operators (which describe the error of the integrator) into simpler combinatorial objects (decorated trees). By showing that the error terms, represented as trees, cancel out when averaged over the invariant distribution, we prove the method's second-order accuracy without a brute-force calculation. The full details can be found in our accompanying paper.
 
-$$
-d\mathbf{Y}_{\tau} = - \nabla _{\mathbf{Y}}\hat{V}(\mathbf{Y})dt + \sqrt{2kT}d\mathbf{W},
-$$
-
-with an effective potential
-
-$$
-\hat{V}(\mathbf{Y}) = V(\mathbf{RY})- 2kT \ln D(\mathbf{RY}).
-$$
-
-Phase-space averages with respect to the invariant measure, $`\rho(\mathbf{X})`$, of the original process can be recovered through
-
-$$
-\int_{\mathbb{R}^n} f(\mathbf{X}) \rho(\mathbf{X}) d\mathbf{X} = \lim_{T \rightarrow \infty} \frac{\int_{\tau=0}^{T} f(\mathbf{R}\mathbf{Y}_ \tau) g(\mathbf{R}\mathbf{Y}_ \tau) d\tau}{\int_{\tau=0}^{T} g(\mathbf{R}\mathbf{Y}_\tau) d\tau}.
-$$
-
-*Note: The Lamperti and time-rescaling transforms can also be combined, see the paper for details.*
-
-This code repository implements one-dimensional and multidimensional time-rescalings as well as one-dimensional Lamperti transforms. Multi-dimensional Lamperti transforms have not been implemented yet. We welcome contributions to extend the functionality of the codebase!
 
