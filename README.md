@@ -77,10 +77,10 @@ where $`t \in \mathbb{R}_{>0}`$ is time, $`x_t \in \mathbb{R}`$ is the state var
 In higher dimensions, 
 
 $$
-   d\mathbf{X}_t = -(\mathbf{D}(\mathbf{X}_t)\mathbf{D}(\mathbf{X}_t)^T) \nabla V(\mathbf{X}_t) dt + kT \text{div}(\mathbf{D}\mathbf{D}^T)(\mathbf{X}_t) dt + \sqrt{2 kT} \mathbf{D}(\mathbf{X}_t)d\mathbf{W}_t,
+   d\mathbf{X}_t = -(\Sigma(\mathbf{X}_t)\Sigma(\mathbf{X}_t)^T) \nabla V(\mathbf{X}_t) dt + kT \text{div}(\Sigma\Sigma^T)(\mathbf{X}_t) dt + \sqrt{2 kT} \Sigma(\mathbf{X}_t)d\mathbf{W}_t,
 $$
 
-where $`\mathbf{X}_t \in \mathbb{R}^n`$ is the state variable, $`\mathbf{W}_t`$ is an n-dimensional Wiener process, $`V: \mathbb{R}^n \xrightarrow{} \mathbb{R}`$ is a potential function, and $`\mathbf{D}\mathbf{D}^T: \mathbb{R}^n \xrightarrow{} \mathbb{R}^n \times \mathbb{R}^n`$ is a configuration-dependent diffusion tensor that is everywhere positive definite.
+where $`\mathbf{X}_t \in \mathbb{R}^n`$ is the state variable, $`\mathbf{W}_t`$ is an n-dimensional Wiener process, $`V: \mathbb{R}^n \xrightarrow{} \mathbb{R}`$ is a potential function, and $`\Sigma\Sigma^T: \mathbb{R}^n \xrightarrow{} \mathbb{R}^n \times \mathbb{R}^n`$ is a configuration-dependent diffusion tensor that is everywhere positive definite.
 
 We assume that $`V`$ is confining in a way that ensures ergodicity of the dynamics and, therefore, there exists a unique invariant distribution $`\rho(\mathbf{X})`$ - a probability distribution that does not change under the process dynamics. For Brownian dynamics, the invariant distribution is the canonical ensemble; $`\rho(\mathbf{X}) \propto \exp{\left(- V(\mathbf{X})/kT\right)}`$. Another consequence of ergodicity is that the long-time time averages converge to phase-space averages, i.e.
 
