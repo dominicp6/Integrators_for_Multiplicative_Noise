@@ -7,13 +7,15 @@ This codebase is also an extension of [this repo](https://github.com/dominicp6/T
 
 If you use this work, please use the following citations:
 
+```
 @article{bronasco2025efficient,
   title={Efficient Langevin sampling with position-dependent diffusion},
   author={Bronasco, Eugen and Leimkuhler, Benedict and Phillips, Dominic and Vilmart, Gilles},
   journal={arXiv preprint arXiv:2501.02943},
   year={2025}
 }
-
+```
+```
 @article{phillips2025numerics,
   title={Numerics with coordinate transforms for efficient Brownian dynamics simulations},
   author={Phillips, Dominic and Leimkuhler, Benedict and Matthews, Charles},
@@ -24,6 +26,7 @@ If you use this work, please use the following citations:
   year={2025},
   publisher={Taylor \& Francis}
 }
+```
 
 ## Motivation
 Numerical integrators of Stochastic Differential Equations (SDEs) work well for constant (additive) noise but often lose performance, or fail to converge, for variable (multiplicative) noise. 
