@@ -44,7 +44,7 @@ function run_chunk_with_transforms(integrator, x0, Vprime, D, Dprime, tau::Numbe
     end
 
     # Update the number of steps left to run
-    hist += Hist1D(x_chunk, bin_boundaries)
+    hist += Hist1D(x_chunk, binedges = bin_boundaries)
     chunk_number += 1
 
     return x0, hist, chunk_number, ΣgI, Σg, ΣI
@@ -111,7 +111,7 @@ function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sig
             steps_remaining = floor(Int, T / dt)                
             total_samples = Int(steps_remaining)
             chunk_number = 0                                 
-            hist = Hist1D([], bin_boundaries)            
+            hist = Hist1D([], binedges = bin_boundaries)            
 
             # For time-transformed integrators, we need to keep track of the following quantities for reweighting
             ΣgI = zeros(length(bin_boundaries)-1)
@@ -245,7 +245,7 @@ function run_1D_experiment_until_given_error_with_transforms(integrator, num_rep
             steps_ran = 0                                    
             chunk_number = 0                                 
             error = Inf                                    
-            hist = Hist1D([], bin_boundaries)                 
+            hist = Hist1D([], binedges = bin_boundaries)                 
 
             # For time-transformed integrators, we need to keep track of the following quantities
             ΣgI = zeros(length(bin_boundaries)-1)

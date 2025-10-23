@@ -14,7 +14,7 @@ function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt:
     x_traj = zeros(m)
     sqrt_dt = sqrt(dt)
 
-    # simulate
+    # sismulate
     for i in 1:m
         # compute the drift and diffusion coefficients
         D_x = D(x)
@@ -169,7 +169,6 @@ function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, d
 
     return x_traj, nothing
 end
-
 
 function strang_splitting2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     D² = (x, y) -> D(x, y)^2
@@ -703,6 +702,41 @@ function leimkuhler_matthews2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer
         drift = -DDT_x * grad_V + (sigma^2)/2 * div_DDT_x 
         Rₖ₊₁ = randn(n)
         diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
+        
+        # update the configuration
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
+        
+        # update the time
+        t += dt
+
+        # update the noise increment
+        Rₖ = copy(Rₖ₊₁)      
+    end 
+    
+    return x_traj, Rₖ
+end
+
+
+function leimkuhler_matthews2D_identityD(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+    
+    # set up
+    t = 0.0
+    x = copy(x0)
+    n = 2
+    x_traj = zeros(n, m)
+    if Rₖ === nothing
+        Rₖ = randn(n)
+    end
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        # compute the drift and diffusion coefficients
+        grad_V = Vprime(x[1], x[2])
+        drift = -grad_V
+        Rₖ₊₁ = randn(n)
+        diffusion = sigma * (Rₖ + Rₖ₊₁)/2 
         
         # update the configuration
         x += drift * dt + diffusion * sqrt_dt

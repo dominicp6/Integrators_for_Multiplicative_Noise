@@ -129,4 +129,8 @@ function muller_brown(q::AbstractVector{T}) where T <: Real
     return z
 end
 
+function q2Ring(x::T, y::T) where T <: Real
+    return 25 * (1 - sqrt(x^2 + y^2))^4
+end
+
 end # module Potentials
