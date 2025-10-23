@@ -1,6 +1,6 @@
 module IntegratorUtils
 using StatsBase
-export MT2_1D, W2Ito1_1D, W2Ito1_2D, MT2_2D, EM_noise_1D
+export MT2_1D, W2Ito1_1D, W2Ito1_2D, MT2_2D, EM_noise_1D, MT2_ND
 
 function EM_noise_1D(x0, dt, D, sigma)
     # Number of substeps
@@ -110,6 +110,56 @@ function MT2_2D(x0, dt, D, D_1, D_2, Rₖ)
     arg1 = x0 + sqrt(dt/2) * D_x0 * [χ1, χ2]
     arg2 = x0 - sqrt(dt/2) * D_x0 * [χ1, χ2]
     result += sqrt(dt)/2 * (D(arg1...) + D(arg2...)) * Rₖ
+
+    return result
+end
+
+function MT2_ND(x0, sigma, dt, D, D_column, Rₖ)
+    # Dimension of the system
+    d = length(x0)
+
+    # Generate random variables χ for each dimension
+    χ = rand([-1, 1], d)
+
+    # Construct the Ja matrix (d x d)
+    J = zeros(d, d)
+    for a in 1:d
+        for b in 1:d
+            if a == b
+                J[a, b] = dt * (Rₖ[b]^2 - 1) / 2
+            elseif a > b
+                J[a, b] = dt * (Rₖ[a] * Rₖ[b] - χ[a]) / 2
+            else
+                J[a, b] = dt * (Rₖ[a] * Rₖ[b] + χ[b]) / 2
+            end
+        end
+    end
+
+    # Evaluate the diffusion tensor D at x0 (returns dxd matrix)
+    D_x0 = D(x0)  
+
+    # Initialize result vector
+    result = zeros(d)  
+
+    # Computing the first term
+    for a in 1:d
+        # Compute the arguments based on D_x0 * Ja
+        arg1 = x0 + sigma * D_x0 * J[a, :]
+        arg2 = x0 - sigma * D_x0 * J[a, :]
+
+        # Accumulate results for D_vec[a](...) corresponding to Da in the equation
+        result += 0.5 * sigma * (D_column(arg1, a) - D_column(arg2, a))
+    end
+
+    # Computing the second term
+    sqrt_dt = sqrt(dt)
+    sqrt_dt_half = sqrt(dt / 2)
+
+    arg1 = x0 + sqrt_dt_half * sigma * D_x0 * χ
+    arg2 = x0 - sqrt_dt_half * sigma * D_x0 * χ
+
+    # The last term involves the entire diffusion tensor D, not individual components
+    result += (sigma^2) * sqrt_dt / 2 * (D(arg1) + D(arg2)) * Rₖ
 
     return result
 end

@@ -1,6 +1,6 @@
 module Calculus
 using ForwardDiff, Symbolics
-export matrix_divergence, differentiate1D, differentiateND, differentiate2D, symbolic_vector_divergence2D
+export matrix_divergence, differentiate1D, differentiateND, differentiate2D, symbolic_vector_divergence2D, gradientND, symbolic_matrix_divergenceND
 
 """
 Compute the symbolic derivative of a scalar function of a single variable
@@ -64,14 +64,52 @@ function symbolic_matrix_divergence2D(M)
 end
 
 """
+Compute the symbolic matrix divergence of a matrix function of a vector variable
+"""
+function symbolic_matrix_divergenceND(M, dim::Int)
+    @variables q[1:dim]
+
+    row_divergences = []
+    for i in 1:dim
+        V_i = q -> M(q)[i, :]
+
+        div_V_i = Symbolics.divergence(V_i(q), q)
+        append!(row_divergences, [expand_derivatives(div_V_i)])
+    end
+
+    div_M_fn = Symbolics.build_function(vcat(row_divergences...), q, expression=false)
+
+    return div_M_fn
+end
+
+"""
 Compute the symbolic gradient of a scalar function of multiple variables
 """
 function differentiateND(f::Function)
     @variables x[1:length(f.args)...]
-    gradGen = gradient(f(x...), x)
-    gradFn = build_function(gradGen, x, expression=false)
+    gradGen = Symbolics.gradient(f(x...), x)
+    gradFn = Symbolics.build_function(gradGen, x, expression=false)
 
     return gradFn
+end
+
+"""
+Compute the symbolic gradient of a scalar function of a vector variable
+"""
+function gradientND(f::Function, dim::Int)
+    @variables x[1:dim]
+    gradGens = [Differential(x[i])(f(x)) for i in 1:dim]
+    built_derivatives = []
+    for gradGen in gradGens
+        temp = expand_derivatives(gradGen)
+        gradFn = Symbolics.build_function(gradExp, x, expression=false)
+        push!(build_derivatives, gradFn)
+    end
+    grad = (x) -> begin
+        [gradFn(x) for gradFn in built_derivatives]
+    end
+
+    return grad
 end
 
 """

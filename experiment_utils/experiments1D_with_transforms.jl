@@ -81,7 +81,7 @@ The experiment is repeated `num_repeats` times, each time with different initial
 
 Note: The `V` and `D` functions may be modified internally to implement time or space transformations, based on the provided `time_transform` and `space_transform` arguments.
 """
-function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
+function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, probabilities, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing, max_retries=3)
     
     # Make master directory
     make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, bin_boundaries, chunk_size, time_transform, space_transform, T=T)
@@ -120,16 +120,62 @@ function run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sig
             # For space-transformed integrators, we need to keep track of the following quantities for reweighting
             ΣI = zeros(length(bin_boundaries)-1)
 
-            while steps_remaining > 0
-                # Run steps in chunks to minimise memory footprint
-                steps_to_run = convert(Int, min(steps_remaining, chunk_size))
-                x0, hist, chunk_number, ΣgI, Σg, ΣI = run_chunk_with_transforms(integrator, x0, Vprime, D, Dprime, sigma, dt, steps_to_run, hist, bin_boundaries, chunk_number, time_transform, space_transform, ΣgI, Σg, ΣI, original_D, x_of_y)
-                steps_remaining -= steps_to_run
+            steps_done = 0
+            retry_count = 0
+            x_start = deepcopy(x0)
+            while retry_count < max_retries
+                try
+                    while steps_remaining > 0
+                        # Run steps in chunks to minimise memory footprint
+                        steps_to_run = convert(Int, min(steps_remaining, chunk_size))
+                        
+                        x_start = deepcopy(x0)
+                        x0, hist, chunk_number, ΣgI, Σg, ΣI = run_chunk_with_transforms(integrator, x0, Vprime, D, Dprime, sigma, dt, steps_to_run, hist, bin_boundaries, chunk_number, time_transform, space_transform, ΣgI, Σg, ΣI, original_D, x_of_y)
+                        x0 = copy(x0[end])
+                        steps_remaining -= steps_to_run
+                        steps_done += steps_to_run
+
+                        retry_count = 0
+                        if repeat == 1
+                            # Read the JSON file
+                            file_path = "$(save_dir)/progress.json"
+                            json_data = JSON.parsefile(file_path)
+                            json_data[string(nameof(integrator))][string(dt)] = steps_done / total_samples
+                            
+                            # Write the modified data back to the JSON file
+                            open(file_path, "w") do io
+                                JSON.print(io, json_data, 4)
+                            end
+                        end
+                    end
+
+                    # Compute the convergence error
+                    convergence_errors[stepsize_idx, repeat] = compute_convergence_error(hist, probabilities, total_samples, time_transform, space_transform, ΣgI, Σg, ΣI)
+                    delay = repeat / num_repeats
+                    sleep(delay)
+                    errors_path = "$(save_dir)/partial_results.txt"
+                    open(errors_path, "a") do io
+                        message = string(string(nameof(integrator)), ", ", dt, ", ", repeat, ", ", convergence_errors[stepsize_idx, repeat], "\n")
+                        write(io, message)
+                    end
+
+                    break
+                catch
+                    retry_count += 1
+                    if retry_count >= max_retries
+                        errors_path = "$(save_dir)/errors.txt"
+                        open(errors_path, "a") do io
+                            message = string("Experiment with ", string(nameof(integrator)), " stepsize ", dt, " failed in repeat ", repeat, "\n")
+                            write(io, message)
+                        end
+                        convergence_errors[stepsize_idx, repeat] = -1
+                        break
+                    else
+                        # Reset state to the start of the previous batch
+                        x0 = deepcopy(x_start)
+                    end
+                end
             end
-
-            # Compute the convergence error
-            convergence_errors[stepsize_idx, repeat] = compute_convergence_error(hist, probabilities, total_samples, time_transform, space_transform, ΣgI, Σg, ΣI)
-
         end
     end
 
@@ -396,17 +442,24 @@ Parameters:
 Returns:
 - The function saves the results of each experiment in the specified `save_dir` and also saves the time convergence data in a file named "time.json".
 """
-function master_1D_experiment_with_transforms(integrators, num_repeats, V, D, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing)
+function master_1D_experiment_with_transforms(integrators, num_repeats, V, D, T, sigma, stepsizes, bin_boundaries, save_dir; chunk_size=10000000, x0=nothing, time_transform=false, space_transform=false, x_of_y=nothing, max_retries=3)
     to = TimerOutput()
 
     @info "Computing the Invariant Distribution"
     exact_invariant_distribution = compute_1D_invariant_distribution(V, sigma, bin_boundaries)
 
+    create_directory_if_not_exists(save_dir)
+    progress = Dict(string(nameof(integrator)) => Dict(string(dt) => 0 for dt in stepsizes) for integrator in integrators)
+    open("$(save_dir)/progress.json", "w") do f
+        JSON.print(f, progress, 4)
+    end
+
+
     @info "Running Experiments"
     for integrator in integrators
         @info "Running $(string(nameof(integrator))) experiment"
         @timeit to "Exp$(string(nameof(integrator)))" begin
-            _ = run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, x0=x0, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y)
+            _ = run_1D_experiment_with_transforms(integrator, num_repeats, V, D, T, sigma, stepsizes, exact_invariant_distribution, bin_boundaries, save_dir, chunk_size=chunk_size, x0=x0, time_transform=time_transform, space_transform=space_transform, x_of_y=x_of_y, max_retries=max_retries)
         end
     end
 

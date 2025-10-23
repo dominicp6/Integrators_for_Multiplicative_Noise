@@ -4,7 +4,7 @@ include("../general_utils/transform_utils.jl")
 using FHist, JSON
 import .MiscUtils: init_x0, create_directory_if_not_exists
 import .TransformUtils: increment_g_counts, increment_I_counts
-export make_experiment_folders, run_chunk
+export make_experiment_folders, run_chunk, make_experiment_folders2
 
 """
 Creates necessary directories and save experiment parameters for the 1D experiment.
@@ -26,6 +26,26 @@ function make_experiment_folders(save_dir, integrator, stepsizes, num_repeats, V
                         "chunk_size" => chunk_size,
                         "time_transform" => string(time_transform),
                         "space_transform" => string(space_transform))
+        open("$(save_dir)/info.json", "w") do f
+            JSON.print(f, metadata, 4)
+        end
+    end
+end
+
+function make_experiment_folders2(save_dir, integrator, stepsizes, num_repeats, V, D, sigma, chunk_size, T)
+    # Make master directory
+    create_directory_if_not_exists(save_dir)
+
+    if !isfile("$(save_dir)/info.json")
+        @info "Saving metadata"
+        metadata = Dict("integrator" => string(nameof(integrator)),
+                        "num_repeats" => num_repeats,
+                        "V" => string(nameof(V)),
+                        "D" => string(nameof(D)),
+                        "T" => T,
+                        "sigma" => sigma,
+                        "stepsizes" => stepsizes,
+                        "chunk_size" => chunk_size)
         open("$(save_dir)/info.json", "w") do f
             JSON.print(f, metadata, 4)
         end

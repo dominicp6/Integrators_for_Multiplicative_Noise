@@ -1,6 +1,6 @@
 module DiffusionTensors
 using LinearAlgebra
-export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIII, DanisotropicIV, DanisotropicV
+export Dconst1D, Dabs1D, Dquadratic1D, Dconst2D, Dabs2D, Dquadratic2D, DmoroCardin, Doseen, Dcosperturb1D, Dcosperturb2D, DabsSquareRoot1D, DdoubleWellChannelAnisotropic, DanisotropicI, DanisotropicII, DanisotropicIII, DanisotropicIV, DanisotropicV, DtangentND
 
 # This script defines preset diffusion tensors to test the code
 
@@ -28,6 +28,8 @@ function Dsinperturb1D(q::T) where T<:Real
     return 1.5 + 0.5 * sin(q)
 end
 
+# TODO: edit 
+
 function Dconst2D(x::T, y::T) where T<:Real
     return Matrix{Float64}(I, 2, 2)
 end
@@ -48,14 +50,28 @@ function DmoroCardin(x::T, y::T) where T<:Real
     return (1.0 + 5.0 * exp(- (x^2 + y^2) / (2 * 0.3^2)))^(-1) * Matrix{Float64}(I, 2, 2)
 end
 
+function DisotropicII(x::T, y::T) where T<:Real
+    return (1.0 + 5.0 * exp(- (x^2 + y^2) / (2 * 0.3^2))) * Matrix{Float64}(I, 2, 2)
+end
+
+function Danisotropic(x::T, y::T) where T<:Real
+    vec = [x, y]
+    return Matrix{Float64}(I, 2, 2) - vec * vec' / (2 * dot(vec, vec) + 1) 
+end
+
 function DanisotropicI(x::T, y::T) where T<:Real
     return [1.0 0; 0 1.5]
 end
 
-function DanisotropicII(x::T, y::T) where T<:Real
-    theta = atan(y, x)
-    return [1-sin(theta)^2 / 2 cos(theta) * sin(theta) / 2; cos(theta) * sin(theta)/2 1 - cos(theta)^2 / 2]
+function DanisotropicIImodified(x::T, y::T) where T<:Real
+    q_norm_squared = x^2 + y^2
+    return [1 - x^2 / (q_norm_squared + 1) -x*y / (q_norm_squared + 1); -x*y / (q_norm_squared + 1) 1 - y^2 / (q_norm_squared + 1)]
 end
+
+# function DanisotropicII(x::T, y::T) where T<:Real
+#     theta = atan(y, x)
+#     return [1-sin(theta)^2 / 2 cos(theta) * sin(theta) / 2; cos(theta) * sin(theta)/2 1 - cos(theta)^2 / 2]
+# end
 
 function DanisotropicIII(x::T, y::T) where T<:Real
     theta = atan(y, x)

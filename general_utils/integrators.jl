@@ -4,7 +4,7 @@ include("integrator_utils.jl")
 using LinearAlgebra, Random, Plots, ForwardDiff, Base.Threads, ProgressBars
 using .Calculus: symbolic_matrix_divergence2D, differentiate1D
 using .IntegratorUtils: EM_noise_1D
-export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D, strang_splitting_with_EM1D, W2Ito_full1D
+export euler_maruyama1D, leimkuhler_matthews1D, leimkuhler_matthews_markovian1D, hummer_leimkuhler_matthews1D, milstein_method1D, stochastic_heun1D, euler_maruyama2D, leimkuhler_matthews2D, hummer_leimkuhler_matthews2D, euler_maruyama2D_identityD, naive_leimkuhler_matthews2D_identityD, limit_method_with_variable_diffusion1D, limit_method_for_variable_diffusion2D, limit_method_with_variable_diffusion_RK6_1D, strang_splitting1D, limit_method_with_variable_diffusion_old_notation1D, strang_splitting_with_EM1D, W2Ito_full1, strang_splitting2D, eugen_gillesND, euler_maruyamaND, hummer_leimkuhler_matthewsND, strang_splittingND
 
 function euler_maruyama1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
     
@@ -170,6 +170,53 @@ function strang_splitting1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, d
     return x_traj, nothing
 end
 
+
+function strang_splitting2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
+    D² = (x, y) -> D(x, y)^2
+    F = (x, y) -> D²(x, y) * (-Vprime(x, y)) + sigma^2 * div_DDT(x, y) /2
+
+    # Define first and second columns of the matrix function D
+    D_1 = (x, y) -> D(x, y)[:,1]
+    D_2 = (x, y) -> D(x, y)[:,2]
+
+    # set up
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(2, m)
+    
+    # simulate
+    for i in 1:m
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * F(x[1], x[2])
+        k2 = (dt / 2) * F(x[1] + 0.5 * k1[1], x[2] + 0.5 * k1[2])
+        k3 = (dt / 2) * F(x[1] + 0.5 * k2[1], x[2] + 0.5 * k2[2])
+        k4 = (dt / 2) * F(x[1] + k3[1], x[2] + k3[2]) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
+
+        Rₖ = randn(2)
+
+        x += noise_integrator(x, dt, D, D_1, D_2, Rₖ)
+
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * F(x[1], x[2])
+        k2 = (dt / 2) * F(x[1] + 0.5 * k1[1], x[2] + 0.5 * k1[2])
+        k3 = (dt / 2) * F(x[1] + 0.5 * k2[1], x[2] + 0.5 * k2[2])
+        k4 = (dt / 2) * F(x[1] + k3[1], x[2] + k3[2]) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
+
+        x_traj[:,i] .= x
+
+        # update the time
+        t += dt
+    end
+
+    return x_traj, nothing
+end
+
 function strang_splitting_with_EM1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
 
     # set up
@@ -213,7 +260,6 @@ end
 function W2Ito_full1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=nothing)
 
     # set up
-    x = copy(x0)
     x_traj = zeros(m)
 
     F = x -> -(D(x)^2) * Vprime(x) + sigma^2 * D2prime(x) / 2
@@ -227,27 +273,27 @@ function W2Ito_full1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Num
         χ1 = rand([-1, 1])
         J = χ1 * (Rₖ^2  - 1) / 2
 
-        F_x = F(x)
-        D_x = D(x)
+        F_x = F(x0)
+        D_x = D(x0)
 
-        K01 = x + dt/2 * F_x + sqrt_dt * coeff1 * D_x * Rₖ
+        K01 = x0 + dt/2 * F_x + sqrt_dt * coeff1 * D_x * Rₖ
 
         F_K01 = F(K01)
 
-        K02 = x - dt * F_x + 2*dt * F_K01 + sqrt_dt * coeff2 * D_x * Rₖ
+        K02 = x0 - dt * F_x + 2*dt * F_K01 + sqrt_dt * coeff2 * D_x * Rₖ
 
         F_K02 = F(K02)
 
-        K11 = x + dt/4 * F_x0 + sqrt_dt/2 * D_x * χ1
-        K12 = x + dt/4 * F_x0 - sqrt_dt/2 * D_x * χ1
+        K11 = x0 + dt/4 * F_x + sqrt_dt/2 * D_x * χ1
+        K12 = x0 + dt/4 * F_x - sqrt_dt/2 * D_x * χ1
 
         D_K11 = D(K11)
         D_K12 = D(K12)
 
-        x += dt/6 * F_x + 2*dt/3 * F_K01 + dt/6 * F_K02
-        x += sqrt_dt * (- D_x + D_K11 + D_K12) * Rₖ + 2 * sqrt_dt * (D_x - D_K12) * J
+        x0 += dt/6 * F_x + 2*dt/3 * F_K01 + dt/6 * F_K02
+        x0 += sqrt_dt * (- D_x + D_K11 + D_K12) * Rₖ + 2 * sqrt_dt * (D_x - D_K12) * J
 
-        x_traj[i] = x
+        x_traj[i] = x0
     end
 
     return x_traj, nothing
@@ -288,6 +334,147 @@ function eugen_gilles2D(x0, Vprime, D, div_DDT, sigma::Number, m::Integer, dt::N
     end
 
     return x_traj, nothing
+end
+
+function eugen_gillesND(x0, Vprime, D, div_DDT, D_column, F, Da, sigma::Number, m::Integer, dt::Number, noise_integrator=nothing)
+    
+    # preliminary functions
+    d = length(x0)
+    D² = (x) -> D(x)^2
+    F = (x) -> D²(x) * (-Vprime(x)) + sigma^2 * div_DDT(x)/2
+
+    # set up
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(d, m)
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    x_barₖ₋₁ = x 
+    F_x_barₖ₋₁ = F(x_barₖ₋₁)
+    for i in 1:m
+        Rₖ = randn(d)
+        # choosing x_tilde = x
+        x_barₖ = x + 0.5 * sqrt_dt * sigma * D(x) * Rₖ
+        F_x_barₖ = F(x_barₖ)
+        x += dt * F_x_barₖ + noise_integrator(x + dt * F_x_barₖ₋₁ / 4, sigma, dt, D, D_column, Rₖ)
+
+        x_traj[:, i] .= x_barₖ
+
+        # update the time
+        t += dt
+
+        x_barₖ₋₁ = copy(x_barₖ)
+        F_x_barₖ₋₁ = copy(F_x_barₖ)
+    end
+
+    return x_traj    
+end
+
+function euler_maruyamaND(x0, Vprime, D, div_DDT, D_column, F, Da, sigma::Number, m::Integer, dt::Number, noise_integrator=nothing)
+    # set up
+    d = length(x0)
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(d, m)
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        # compute the drift and diffusion coefficients
+        D_x = D(x)
+        grad_V = Vprime(x)
+        DDT_x = D_x * D_x'
+        div_DDT_x = div_DDT(x)
+        drift = -DDT_x * grad_V + (sigma^2) * div_DDT_x / 2 
+        diffusion = sigma * D_x * randn(d)
+        
+        # update the configuration
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
+        
+        # update the time
+        t += dt
+    end
+    
+    return x_traj
+end
+
+function hummer_leimkuhler_matthewsND(x0, Vprime, D, div_DDT, D_column, F, Da, sigma::Number, m::Integer, dt::Number, noise_integrator=nothing)
+    # set up
+    d = length(x0)
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(d, m)
+    Rₖ = randn(d)
+    sqrt_dt = sqrt(dt)
+
+    # simulate
+    for i in 1:m
+        # compute the drift and diffusion coefficients
+        D_x = D(x)
+        grad_V = Vprime(x)
+        DDT_x = D_x * D_x'
+        div_DDT_x = div_DDT(x)
+        drift = - DDT_x * grad_V + (3/4) * sigma^2 * div_DDT_x / 2
+        Rₖ₊₁ = randn(d)
+        diffusion = sigma * D_x * (Rₖ + Rₖ₊₁)/2 
+        
+        # update the configuration
+        x += drift * dt + diffusion * sqrt_dt
+        x_traj[:,i] .= x
+        
+        # update the time
+        t += dt
+
+        # update the noise increment
+        Rₖ = copy(Rₖ₊₁)      
+    end 
+    
+    return x_traj
+end
+
+function strang_splittingND(x0, Vprime, D, div_DDT, D_column, F, Da, sigma::Number, m::Integer, dt::Number, noise_integrator=nothing)
+
+    # set up
+    d = length(x0)
+    t = 0.0
+    x = copy(x0)
+    x_traj = zeros(d, m)
+
+    # simulate
+    for i in 1:m
+        drift_term = x -> -(D(x)*D(x)') * Vprime(x) + sigma^2 * div_DDT(x) / 2
+
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * drift_term(x)
+        k2 = (dt / 2) * drift_term(x + 0.5 * k1)
+        k3 = (dt / 2) * drift_term(x + 0.5 * k2)
+        k4 = (dt / 2) * drift_term(x + k3) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
+
+        Rₖ = randn(d)
+
+        x += noise_integrator(x, sigma, dt, D, D_column, Rₖ)
+
+        # Perform 1 step of RK4 integration for hat_xₖ₊₁
+        k1 = (dt / 2) * drift_term(x)
+        k2 = (dt / 2) * drift_term(x + 0.5 * k1)
+        k3 = (dt / 2) * drift_term(x + 0.5 * k2)
+        k4 = (dt / 2) * drift_term(x + k3) 
+            
+        # Update state using weighted average of intermediate values
+        x += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4) 
+
+        x_traj[:,i] = x
+
+        # update the time
+        t += dt
+    end
+
+    return x_traj
 end
 
 function limit_method_with_variable_diffusion1D(x0, Vprime, D, D2prime, sigma::Number, m::Integer, dt::Number, Rₖ=nothing, noise_integrator=nothing, n=5)
